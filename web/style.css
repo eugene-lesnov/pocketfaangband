@@ -907,6 +907,15 @@ fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 #play-keys { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 #play-keys button { min-width: 0; }
 #quick-actions { display: contents; }
+#monster-commands {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.25rem;
+}
+.action-preference { display: grid; gap: 0.35rem; padding: 0.5rem; }
+.action-preference select { min-height: 44px; font: inherit; }
+#map-action-buttons small { font-size: 0.75rem; }
 #primary-actions {
     display: grid;
     grid-column: 1 / -1;

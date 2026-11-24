@@ -3,6 +3,7 @@
 #include "main.h"
 #include "buildid.h"
 #include "cave.h"
+#include "cmds.h"
 #include "game-input.h"
 #include "game-world.h"
 #include "grafmode.h"
@@ -11,6 +12,8 @@
 #include "mon-desc.h"
 #include "mon-lore.h"
 #include "mon-predicate.h"
+#include "mon-util.h"
+#include "effects.h"
 #include "monster.h"
 #include "obj-chest.h"
 #include "obj-desc.h"
@@ -106,6 +109,25 @@ enum web_input_mode web_set_input_mode(enum web_input_mode mode)
     enum web_input_mode previous = input_mode;
     input_mode = mode;
     return previous;
+}
+
+char web_choose_shape_action(const char *verb)
+{
+    struct menu *menu = menu_dynamic_new();
+    char title[96], action[96];
+    strnfmt(title, sizeof(title), "Change back and %s?", verb);
+    strnfmt(action, sizeof(action), "Change back and %s", verb);
+    menu->title = title;
+    menu->selections = "yrn";
+    menu->web_no_keyboard = true;
+    menu_dynamic_add(menu, action, 'y');
+    menu_dynamic_add(menu, "Return to normal", 'r');
+    menu_dynamic_add(menu, "Stay in current form", 'n');
+    menu->cursor = 2;
+    menu_layout(menu, &SCREEN_REGION);
+    int result = menu_dynamic_select(menu);
+    menu_dynamic_free(menu);
+    return result == 'y' || result == 'r' ? result : 'n';
 }
 
 const char *web_set_prompt(const char *prompt)
@@ -1044,20 +1066,41 @@ EM_JS(void, send_frame, (int map, int width, int height, const wchar_t *chars,
     Module['sendFrame'](frame);
 });
 
-EM_JS(void, send_quick_actions, (const char *spell_action,
-        bool launcher, bool can_steal, bool can_reshape, bool can_move_house, const char *repeat), {
+EM_JS(void, send_quick_actions, (bool cast, bool fire, bool can_throw, bool breath, bool commanding,
+        bool can_steal, bool can_reshape, bool can_move_house, const char *repeat), {
     Module['worldQuickActions'] = {
-        spell: UTF8ToString(spell_action),
-        launcher: !!launcher, canSteal: !!can_steal, canReshape: !!can_reshape, canMoveHouse: !!can_move_house,
-        repeat: repeat ? UTF8ToString(repeat) : "",
+        cast: !!cast, fire: !!fire, throw: !!can_throw, breath: !!breath, commanding: !!commanding,
+        canSteal: !!can_steal, canReshape: !!can_reshape, canMoveHouse: !!can_move_house,
+        repeat: repeat ? UTF8ToString(repeat) : "", keymaps: [],
     };
 });
+
+EM_JS(void, add_quick_keymap, (int code, int mods, const char *key, const char *action), {
+    const name = UTF8ToString(key);
+    Module['worldQuickActions'].keymaps.push({
+        id: "keymap:" + code + ":" + mods, code, mods, key: name,
+        label: "Keymap " + name + " → " + UTF8ToString(action),
+    });
+});
+
+static void publish_quick_keymap(struct keypress trigger, const struct keypress *actions)
+{
+    char key[80], sequence[512];
+    keypress_to_readable(key, sizeof(key), trigger);
+    keypress_to_text(sequence, sizeof(sequence), actions, true);
+    add_quick_keymap(trigger.code, trigger.mods, key, sequence);
+}
 
 static bool has_action_item(item_tester eligible, int locations)
 {
     if (locations & USE_INVEN) {
         for (int i = 0; i < z_info->pack_size; i++) {
             if (object_test(eligible, player->upkeep->inven[i])) return true;
+        }
+    }
+    if (locations & USE_EQUIP) {
+        for (int i = 0; i < player->body.count; i++) {
+            if (object_test(eligible, slot_object(player, i))) return true;
         }
     }
     if (locations & USE_QUIVER) {
@@ -1074,12 +1117,30 @@ static bool has_action_item(item_tester eligible, int locations)
     return false;
 }
 
-static bool has_learned_spell(void)
+static bool can_cast_at_target(void)
 {
-    for (int i = 0; i < player->class->magic.total_spells; i++) {
-        if (spell_okay_to_cast(player, i)) return true;
-    }
-    return false;
+    return !player_is_shapechanged(player) && player_can_cast(player, false) &&
+        has_action_item(obj_can_cast_from, USE_INVEN | USE_FLOOR);
+}
+
+static bool can_fire_at_target(void)
+{
+    return !player_is_shapechanged(player) && player_can_fire(player, false) &&
+        has_action_item(obj_can_fire, USE_INVEN | USE_QUIVER | USE_FLOOR);
+}
+
+static bool can_throw_at_target(void)
+{
+    return !player_is_shapechanged(player) &&
+        has_action_item(obj_can_throw, USE_INVEN | USE_QUIVER | USE_FLOOR | USE_EQUIP);
+}
+
+static struct object *dragon_breath_armour(void)
+{
+    if (!player->shape->breath) return NULL;
+    struct object *armour = equipped_item_by_slot_name(player, "body");
+    struct effect *effect = armour ? object_effect(armour) : NULL;
+    return effect && effect->index == EF_DRAGON && effect->subtype == player->shape->sidx ? armour : NULL;
 }
 
 static bool can_change_shape(void)
@@ -1094,21 +1155,11 @@ static bool can_move_house(void)
 
 static void publish_quick_actions(void)
 {
-    bool launcher = player_can_fire(player, false);
-    const char *spell_action = "look";
-
-    if (player->class->magic.total_spells) {
-        if (has_learned_spell()) {
-            spell_action = "cast";
-        } else if (player_can_study(player, false) && has_action_item(obj_can_study, USE_INVEN | USE_FLOOR)) {
-            spell_action = "study";
-        } else if (has_action_item(obj_can_browse, USE_INVEN | USE_FLOOR)) {
-            spell_action = "browse";
-        }
-    }
-
-    send_quick_actions(spell_action, launcher, player_has(player, PF_STEAL), can_change_shape(), can_move_house(),
+    const struct object *armour = dragon_breath_armour();
+    send_quick_actions(can_cast_at_target(), can_fire_at_target(), can_throw_at_target(), armour && obj_can_activate(armour),
+        player->timed[TMD_COMMAND] != 0, player_has(player, PF_STEAL), can_change_shape(), can_move_house(),
         web_repeat_label());
+    keymap_visit_custom(OPT(player, rogue_like_commands) ? KEYMAP_MODE_ROGUE : KEYMAP_MODE_ORIG, publish_quick_keymap);
 }
 
 enum { LOW_LIGHT_FUEL = 50 };
@@ -1202,12 +1253,36 @@ static void publish_map_status(void)
         show_feeling ? feeling.danger : NULL, show_feeling ? feeling.treasure : NULL,
         danger_color, treasure_color);
 
+    if (outside()) {
+        char clock[32];
+        format_game_time(clock, sizeof(clock));
+        publish_map_indicator(clock, COLOUR_WHITE, is_daytime() ? "Daytime" : "Night");
+    }
+    if (player_has(player, PF_TRAP)) {
+        publish_map_indicator(format("Traps %d/%d", player->num_traps, monster_trap_limit()),
+            COLOUR_WHITE, "Monster traps set on this level");
+    }
+    if (player->state.shield_on_back && equipped_item_by_slot_name(player, "arm"))
+        publish_map_indicator("Shield on back", COLOUR_YELLOW, "Reduced armor class and no shield bash");
+    if (player->timed[TMD_COMMAND]) {
+        const struct monster *mon = get_commanded_monster();
+        char label[128] = "Command monster";
+        if (mon && monster_is_obvious(mon) && !player->timed[TMD_IMAGE]) {
+            char name[96];
+            monster_desc(name, sizeof(name), mon, MDESC_TARG);
+            strnfmt(label, sizeof(label), "Commanding %s", name);
+        }
+        publish_map_indicator(label, COLOUR_L_BLUE, "Directions move the commanded monster");
+    }
     int moves = player->state.num_moves;
     if (player_is_shapechanged(player)) {
         char form[80];
         strnfmt(form, sizeof(form), "%s form", player->shape->name);
         my_strcap(form);
         publish_map_indicator(form, COLOUR_L_GREEN, "Current shape");
+        const struct object *armour = dragon_breath_armour();
+        if (armour && armour->timeout)
+            publish_map_indicator("Breath recharging", COLOUR_YELLOW, "Dragon scale mail is recharging");
     }
     if (moves)
         publish_map_indicator(format("Moves %+d", moves), COLOUR_L_TEAL, "Movement speed");
@@ -1326,6 +1401,7 @@ static void publish_world(bool commands)
         int priority = 0;
         switch (effect) {
             case TMD_PARALYZED: priority = 100; break;
+            case TMD_BLACKBREATH: priority = 97; break;
             case TMD_CONFUSED: priority = 95; break;
             case TMD_BLIND: priority = 90; break;
             case TMD_POISONED: priority = 85; break;
@@ -1347,7 +1423,7 @@ static void publish_world(bool commands)
                 priority = player->timed[effect] <= PY_FOOD_FAINT ? 96 : 50;
                 break;
         }
-        add_world_condition(grade->name, priority);
+        add_world_condition(effect == TMD_BLACKBREATH ? "Black Breath" : grade->name, priority);
     }
     object_desc(light_name, sizeof(light_name), light, ODESC_BASE | ODESC_COMBAT, player);
 
@@ -1485,7 +1561,7 @@ enum web_map_action {
     MAP_OPEN, MAP_CLOSE, MAP_DISARM, MAP_TUNNEL, MAP_OPEN_CHEST, MAP_DISARM_CHEST,
     MAP_STUDY, MAP_LEARN_SPECIALTY, MAP_REST, MAP_JUMP, MAP_WALK, MAP_ATTACK, MAP_STEAL, MAP_FIRE, MAP_CAST,
     MAP_THROW, MAP_DETAILS, MAP_INSPECT, MAP_FLOOR, MAP_SET_TRAP, MAP_IMPROVE_TRAP,
-    MAP_CHANGE_SHAPE, MAP_MOVE_HOUSE, MAP_ACTION_COUNT
+    MAP_CHANGE_SHAPE, MAP_MOVE_HOUSE, MAP_USE, MAP_LOCK, MAP_BREATHE, MAP_ACTION_COUNT
 };
 
 static const char *const map_action_labels[MAP_ACTION_COUNT] = {
@@ -1501,6 +1577,7 @@ static const char *const map_action_labels[MAP_ACTION_COUNT] = {
     [MAP_DETAILS] = "Details", [MAP_INSPECT] = "Inspect", [MAP_FLOOR] = "Floor",
     [MAP_SET_TRAP] = "Set trap", [MAP_IMPROVE_TRAP] = "Improve trap",
     [MAP_CHANGE_SHAPE] = "Change shape", [MAP_MOVE_HOUSE] = "Move house",
+    [MAP_USE] = "Use Item On", [MAP_LOCK] = "Lock", [MAP_BREATHE] = "Breathe",
 };
 
 static const cmd_code map_action_commands[MAP_ACTION_COUNT] = {
@@ -1514,6 +1591,7 @@ static const cmd_code map_action_commands[MAP_ACTION_COUNT] = {
     [MAP_THROW] = CMD_THROW,
     [MAP_SET_TRAP] = CMD_ALTER, [MAP_IMPROVE_TRAP] = CMD_ALTER,
     [MAP_CHANGE_SHAPE] = CMD_RESHAPE, [MAP_MOVE_HOUSE] = CMD_MOVE,
+    [MAP_USE] = CMD_USE, [MAP_LOCK] = CMD_DISARM, [MAP_BREATHE] = CMD_ACTIVATE,
 };
 
 static bool map_cell_adjacent(struct loc grid)
@@ -1563,6 +1641,8 @@ static unsigned player_map_actions(struct loc grid, int object_count)
     if (player_can_study(player, false) && has_action_item(obj_can_study, pack_and_floor))
         actions |= 1U << MAP_STUDY;
     if (player->upkeep->new_specialties > 0) actions |= 1U << MAP_LEARN_SPECIALTY;
+    struct object *armour = dragon_breath_armour();
+    if (armour && obj_can_activate(armour)) actions |= 1U << MAP_BREATHE;
     if (can_change_shape()) actions |= 1U << MAP_CHANGE_SHAPE;
     if (can_move_house()) actions |= 1U << MAP_MOVE_HOUSE;
     return actions;
@@ -1581,13 +1661,16 @@ static unsigned nearby_map_actions(struct loc grid, struct object *const *object
     }
     if (loc_eq(grid, player->grid) || !square_isknown(known, grid)) return actions;
 
-    if (square_iscloseddoor(known, grid) && !(actions & (1U << MAP_OPEN_CHEST)))
+    if (square_iscloseddoor(known, grid) && !(actions & (1U << MAP_OPEN_CHEST))) {
         actions |= 1U << MAP_OPEN;
+        if (!square_islockeddoor(known, grid)) actions |= 1U << MAP_LOCK;
+    }
     if (square_isopendoor(known, grid)) actions |= 1U << MAP_CLOSE;
     if ((square_isdisarmabletrap(known, grid) || square_ismonstertrap(known, grid)) &&
             !(actions & (1U << MAP_DISARM_CHEST)))
         actions |= 1U << MAP_DISARM;
-    if (square_trap(known, grid) && square_isbasicmonstertrap(known, grid)) {
+    if (player->timed[TMD_BLIND] || player->timed[TMD_CONFUSED] || no_light(player)) return actions;
+    if (square_isbasicmonstertrap(known, grid)) {
         actions |= 1U << MAP_IMPROVE_TRAP;
     } else if (player_has(player, PF_TRAP) && square_player_trap_allowed(known, grid) &&
             !square_isdiggable(known, grid) && !square_iscloseddoor(known, grid) &&
@@ -1635,6 +1718,7 @@ static unsigned map_actions(struct loc grid, struct monster *mon, struct object 
 {
     struct chunk *known = player->cave;
     unsigned actions = 0;
+    if (player->timed[TMD_COMMAND]) return mon ? 1U << MAP_DETAILS : 0;
     if (loc_eq(grid, player->grid)) {
         actions = player_map_actions(grid, object_count);
         if (!player->timed[TMD_IMAGE])
@@ -1649,20 +1733,19 @@ static unsigned map_actions(struct loc grid, struct monster *mon, struct object 
             actions |= 1U << MAP_ATTACK;
             if (player_has(player, PF_STEAL)) actions |= 1U << MAP_STEAL;
         }
-        if (target_able(mon)) {
-            int sources = USE_INVEN | USE_FLOOR | USE_QUIVER;
-            if (player_can_fire(player, false) && has_action_item(obj_can_fire, sources))
-                actions |= 1U << MAP_FIRE;
-            if (player_can_cast(player, false) && has_learned_spell() &&
-                    has_action_item(obj_can_cast_from, USE_INVEN | USE_FLOOR))
-                actions |= 1U << MAP_CAST;
-            if (has_action_item(obj_can_throw, sources)) actions |= 1U << MAP_THROW;
-        }
-        return actions;
     }
+    if ((mon && target_able(mon)) || (!mon && !quick && square_in_bounds_fully(cave, grid))) {
+        if (can_fire_at_target()) actions |= 1U << MAP_FIRE;
+        if (can_cast_at_target()) actions |= 1U << MAP_CAST;
+        if (can_throw_at_target()) actions |= 1U << MAP_THROW;
+        if (!quick && !player_is_shapechanged(player) &&
+                has_action_item(obj_is_useable, USE_INVEN | USE_EQUIP | USE_QUIVER | USE_FLOOR))
+            actions |= 1U << MAP_USE;
+    }
+    if (mon) return actions;
     if (adjacent) {
-        actions = nearby_map_actions(grid, objects, object_count);
-        if (quick) actions &= ~((1U << MAP_SET_TRAP) | (1U << MAP_IMPROVE_TRAP));
+        actions |= nearby_map_actions(grid, objects, object_count);
+        if (quick) actions &= ~((1U << MAP_SET_TRAP) | (1U << MAP_IMPROVE_TRAP) | (1U << MAP_LOCK));
         if (square_isdiggable(known, grid) &&
                 (!quick || square_isrubble(known, grid) || square_hasgoldvein(known, grid)))
             actions |= 1U << MAP_TUNNEL;
@@ -1685,11 +1768,12 @@ EM_JS(void, set_map_route_available, (bool available), {
 });
 
 EM_JS(void, add_map_action, (int x, int y, int direction, int code, const char *label, int key,
-        const char *key_sequence), {
+        const char *key_sequence, const char *detail), {
     const actions = Module['inputContext'].mapCell.actions;
     let action = actions.find((entry) => entry.code === code);
     if (!action) {
         action = { code, label: UTF8ToString(label), key };
+        if (detail) action.detail = UTF8ToString(detail);
         if (key_sequence) action.keySequence = UTF8ToString(key_sequence);
         actions.push(action);
     }
@@ -1707,9 +1791,19 @@ static void describe_map_actions(int x, int y, int direction, unsigned enabled)
         cmd_code command = map_action_commands[code];
         int key = code == MAP_REST ? 'R' : command != CMD_NULL ? cmd_lookup_key(command, keymap) : 0;
         const char *label = map_action_labels[code];
-        if ((code == MAP_GO_UP || code == MAP_GO_DOWN) && square_ispath(player->cave, web_map_grid(x, y)))
-            label = "Follow path";
-        add_map_action(x, y, direction, code, label, key, code == MAP_LEARN_SPECIALTY ? "S → l" : NULL);
+        char path[160];
+        struct loc grid = web_map_grid(x, y);
+        if ((code == MAP_GO_UP || code == MAP_GO_DOWN) && square_ispath(player->cave, grid)) {
+            const char *heading = path_direction(square_feat(player->cave, grid)->fidx);
+            int destination = player_get_next_place(player->place, heading, 1);
+            if (destination >= 0) {
+                strnfmt(path, sizeof(path), "Follow path %s · %s", heading, level_name(&world->levels[destination]));
+                label = path;
+            }
+        }
+        const char *detail = (code == MAP_EQUIP_LIGHT || code == MAP_REFILL) && player_has(player, PF_UNLIGHT) ?
+            "Unlight increases spell failure on lit squares." : NULL;
+        add_map_action(x, y, direction, code, label, key, code == MAP_LEARN_SPECIALTY ? "S → l" : NULL, detail);
     }
 }
 
@@ -1770,7 +1864,7 @@ static bool queue_map_command(cmd_code command, struct loc grid)
     } else if (command == CMD_PATHFIND) {
         cmd_set_arg_point(cmdq_peek(), "point", grid);
         pace_run = true;
-    } else if (command == CMD_FIRE || command == CMD_CAST || command == CMD_THROW) {
+    } else if (command == CMD_FIRE || command == CMD_CAST || command == CMD_THROW || command == CMD_USE) {
         cmd_set_arg_point(cmdq_peek(), "map target", grid);
     }
     return true;
@@ -1791,6 +1885,15 @@ bool web_map_cell(int x, int y, int gesture)
     struct object *objects[z_info->floor_size];
     int count = scan_distant_floor(objects, N_ELEMENTS(objects), player, grid);
     struct chunk *known = player->cave;
+    if (player->timed[TMD_COMMAND]) {
+        struct monster *controlled = get_commanded_monster();
+        if (direct_move && controlled && monster_is_obvious(controlled) &&
+                ABS(grid.x - controlled->grid.x) <= 1 && ABS(grid.y - controlled->grid.y) <= 1) {
+            int dir = loc_eq(grid, controlled->grid) ? DIR_TARGET : motion_dir(controlled->grid, grid);
+            return web_quick_action('0' + dir);
+        }
+        direct_move = false;
+    }
     if (direct_move && adjacent && square_in_bounds_fully(cave, grid) &&
             !player->timed[TMD_IMAGE] && !mon && !count && square_isfloor(known, grid) &&
             !square_isvisibletrap(known, grid)) {
@@ -1834,11 +1937,42 @@ bool web_act_on_map_cell(int x, int y, int action)
     }
     int keymap = OPT(player, rogue_like_commands) ? KEYMAP_MODE_ROGUE : KEYMAP_MODE_ORIG;
     cmd_code command = map_action_commands[action];
-    if (!key_confirm_command(cmd_lookup_key(command, keymap)) || !queue_map_command(command, grid))
-        return false;
+    int key = cmd_lookup_key(command, keymap);
+    if (!key_confirm_command(key)) return false;
+    struct object *armour = NULL;
+    if (action == MAP_BREATHE) {
+        armour = dragon_breath_armour();
+        if (!armour || !get_item_allow(armour, key, command, false)) return false;
+    }
+    if (!queue_map_command(command, grid)) return false;
+    if (armour) cmd_set_arg_item(cmdq_peek(), "item", armour);
+    if (action == MAP_SET_TRAP || action == MAP_IMPROVE_TRAP)
+        cmd_set_arg_choice(cmdq_peek(), "improve trap", action == MAP_IMPROVE_TRAP);
     if (action == MAP_EQUIP_LIGHT) cmd_set_arg_choice(cmdq_peek(), "light source", 1);
     if ((action == MAP_OPEN_CHEST || action == MAP_DISARM_CHEST) && loc_eq(grid, player->grid))
         cmd_set_arg_direction(cmdq_peek(), "direction", DIR_TARGET);
+    return true;
+}
+
+bool web_quick_action(int key)
+{
+    int direction = key - '0';
+    cmd_code command;
+    if (direction >= DIR_SW && direction <= DIR_NE) {
+        command = direction == DIR_TARGET ? CMD_HOLD : CMD_WALK;
+    } else if (player->timed[TMD_COMMAND]) {
+        if (key == 'r') command = CMD_READ_SCROLL;
+        else if (key == 'm') command = CMD_CAST;
+        else if (key == 'd') command = CMD_DROP;
+        else return false;
+    } else if (key == 'A') {
+        const term *map = angband_term[WEB_MAP_TERM];
+        return web_act_on_map_cell((player->grid.x - map->offset_x) * tile_width,
+            (player->grid.y - map->offset_y) * tile_height, MAP_BREATHE);
+    } else return false;
+    int keymap = OPT(player, rogue_like_commands) ? KEYMAP_MODE_ROGUE : KEYMAP_MODE_ORIG;
+    if (!key_confirm_command(cmd_lookup_key(command, keymap)) || cmdq_push(command)) return false;
+    if (command == CMD_WALK) cmd_set_arg_direction(cmdq_peek(), "direction", direction);
     return true;
 }
 
@@ -1892,20 +2026,23 @@ void web_poll_interrupt(void)
 EM_JS(int, take_input, (int *code, int *x, int *y, int row, int preview, int section,
         int store_action, int aim_cell, int target_cell, int map_cell, int map_action,
         int buy_stat, int sell_stat, int tiles_event, int name_event, int history_event,
-        int text_event, int delete_event, int run_direction, int character_event, int new_game), {
+        int text_event, int delete_event, int run_direction, int character_event, int new_game, int quick_action, int button), {
     const event = Module['takeInput']();
     if (!event) return 0;
     if (event.mouseAvailable !== undefined) Module['mouseAvailable'] = event.mouseAvailable;
     HEAP32[code >>> 2] = event.code ?? 0;
-    if (event.type === "store-action") {
+    if (event.type === "key") {
+        HEAP32[x >>> 2] = event.mods ?? 0;
+    } else if (event.type === "store-action") {
         HEAP32[x >>> 2] = event.row ?? 0;
     } else if (event.x !== undefined) {
         HEAP32[x >>> 2] = event.x;
         HEAP32[y >>> 2] = event.y;
     }
     switch (event.type) {
-        case "key": return 1;
+        case "key": return event.command ? button : 1;
         case "run-direction": return run_direction;
+        case "quick-action": return quick_action;
         case "open-character": return character_event;
         case "submit-name":
             Module['submittedText'] = event.value;
@@ -2065,7 +2202,7 @@ static errr queue_input(void)
         EVT_WEB_MENU_SECTION, EVT_WEB_STORE_ACTION, EVT_WEB_AIM_CELL, EVT_WEB_TARGET_CELL,
         EVT_WEB_MAP_CELL, EVT_WEB_MAP_ACTION, EVT_WEB_BUY_STAT, EVT_WEB_SELL_STAT, EVT_WEB_TILES,
         EVT_WEB_NAME, EVT_WEB_HISTORY, EVT_WEB_TEXT, EVT_WEB_DELETE, EVT_WEB_RUN_DIRECTION,
-        EVT_WEB_CHARACTER, EVT_WEB_NEW_GAME);
+        EVT_WEB_CHARACTER, EVT_WEB_NEW_GAME, EVT_WEB_QUICK_ACTION, EVT_BUTTON);
 
     if (type == EVT_NONE) return 1;
     if (type != EVT_WEB_TILES) {
@@ -2074,7 +2211,8 @@ static errr queue_input(void)
     }
 
     switch (type) {
-        case EVT_KBRD: return Term_keypress(code, 0);
+        case EVT_KBRD:
+        case EVT_BUTTON: return Term_keypress_as(type, code, x);
         case EVT_WEB_AIM_CELL:
         case EVT_WEB_MAP_CELL:
         case EVT_WEB_MAP_ACTION:

@@ -53,9 +53,27 @@ index d6b0b30..7702f8a 100644
  Use sound ``use_sound``
    Turns on sound effects, if your system supports them.
 diff --git a/docs/playing.rst b/docs/playing.rst
-index a1090b7..cca4046 100644
+index a1090b7..7848240 100644
 --- a/docs/playing.rst
 +++ b/docs/playing.rst
+@@ -117,7 +117,7 @@ Original Keyset Command Summary
+ ``p``  (normally unused; see note)   ``P``  (unused)
+ ``q``  Quaff a potion                ``Q``  Retire character & quit
+ ``r``  Read a scroll                 ``R``  Rest for a period
+-``s``  Steal (rogues only)           ``S``  View or learn specialties
++``s``  Steal from a monster          ``S``  View or learn specialties
+ ``t``  Take off equipment            ``T``  Dig a tunnel
+ ``u``  Use a staff                   ``U``  Use an item
+ ``v``  Throw an item                 ``V``  Display version info
+@@ -125,7 +125,7 @@ Original Keyset Command Summary
+ ``x``  (unused)                      ``X``  (unused)
+ ``y``  (unused)                      ``Y``  (unused)
+ ``z``  Zap a rod                     ``Z``  (unused)
+-``!``  Change shape (Beornings)      ``^a`` (special - debug command)
++``!``  Change shape                  ``^a`` (special - debug command)
+ ``@``  (unused)                      ``^b`` (unused)
+ ``#``  Check the time                ``^c`` (special - break)
+ ``$``  Move house                    ``^d`` (unused)
 @@ -160,15 +160,10 @@ Original Keyset Command Summary
  .. index::
     single: autoexplore; original keyset
@@ -76,6 +94,24 @@ index a1090b7..cca4046 100644
  
  .. index::
     single: roguelike keyset
+@@ -196,7 +191,7 @@ Roguelike Keyset Command Summary
+  ``p``  (normally unused; see note)   ``P``  Browse a book
+  ``q``  Quaff a potion                ``Q``  Retire character & quit
+  ``r``  Read a scroll                 ``R``  Rest for a period
+- ``s``  Steal (rogues only)           ``S``  View or learn specialties
++ ``s``  Steal from a monster          ``S``  View or learn specialties
+  ``t``  Fire an item                  ``T``  Take off equipment
+  ``u``  (walk - north east)           ``U``  (run - north east)
+  ``v``  Throw an item                 ``V``  Display version info
+@@ -204,7 +199,7 @@ Roguelike Keyset Command Summary
+  ``x``  Look around                   ``X``  Use an item
+  ``y``  (walk - north west)           ``Y``  (run - north west)
+  ``z``  Aim a wand (Zap)              ``Z``  Use a staff (Zap)
+- ``!``  Change shape (Beornings)      ``^a`` (special - debug command)
++ ``!``  Change shape                  ``^a`` (special - debug command)
+  ``@``  Center map                    ``^b`` (alter - south west)
+  ``#``  Check the time                ``^c`` (special - break)
+  ``$``  Move house                    ``^d`` Ignore an item
 @@ -240,15 +235,10 @@ Roguelike Keyset Command Summary
  .. index::
     single: autoexplore; roguelike keyset
@@ -119,10 +155,10 @@ index a1090b7..cca4046 100644
  Following a path can automatically open a door or dig out impassable rubble
  that is in the path.  It will only do so if you know the terrain in all the
 diff --git a/lib/help/commands.txt b/lib/help/commands.txt
-index f95f728..9d8625d 100644
+index f95f728..02932e1 100644
 --- a/lib/help/commands.txt
 +++ b/lib/help/commands.txt
-@@ -6,14 +6,11 @@ Original Keyset Command Summary
+@@ -6,14 +6,14 @@ Original Keyset Command Summary
  the letter key with the control key also depressed.  You may also press
  and release ^ and then press and release the letter key to activate the
  same command in case your system intercepts the control plus key
@@ -139,14 +175,35 @@ index f95f728..9d8625d 100644
 +Use '<' or '>' on the appropriate staircase or wilderness path to change
 +levels. Elsewhere, they take you toward the nearest known staircase or path
 +of that kind. Use 'p' to explore until disturbed or out of routes.
++Use 's' with Stealing. Use '!' to return to normal from any form, or to
++assume bear form as a Beorning. Activate dragon scale mail to breathe in
++its dragon form once it has recharged.
  
    a    Aim a wand                      A    Activate an object
    b    Browse a book                   B    -
+@@ -33,7 +33,7 @@ when the autoexplore_commands option is on.
+   p    - (see above)                   P    -
+   q    Quaff a potion                  Q    Retire character & quit
+   r    Read a scroll                   R    Rest for a period
+-  s    Steal from a monster (rogues)   S    Interact with specialties
++  s    Steal from a monster            S    Interact with specialties
+   t    Take off equipment              T    Dig a tunnel
+   u    Use a staff                     U    Use an item
+   v    Throw an item                   V    Display version info
+@@ -41,7 +41,7 @@ when the autoexplore_commands option is on.
+   x    -                               X    -
+   y    -                               Y    -
+   z    Zap a rod                       Z    -
+-  !    Change shape (Beornings)        ^a   (special - debug command)
++  !    Change shape                    ^a   (special - debug command)
+   @    -                               ^b   -
+   #    Check time                      ^c   (special - break)
+   $    Move house                      ^d   -
 diff --git a/lib/help/r_comm.txt b/lib/help/r_comm.txt
-index 12be9ba..f9b6884 100644
+index 12be9ba..a555977 100644
 --- a/lib/help/r_comm.txt
 +++ b/lib/help/r_comm.txt
-@@ -6,14 +6,11 @@ Roguelike Keyset Command Summary
+@@ -6,14 +6,14 @@ Roguelike Keyset Command Summary
  the letter key with the control key also depressed.  You may also press
  and release ^ and then press and release the letter key to activate the
  same command in case your system intercepts the control plus key
@@ -163,9 +220,30 @@ index 12be9ba..f9b6884 100644
 +Use '<' or '>' on the appropriate staircase or wilderness path to change
 +levels. Elsewhere, they take you toward the nearest known staircase or path
 +of that kind. Use 'p' to explore until disturbed or out of routes.
++Use 's' with Stealing. Use '!' to return to normal from any form, or to
++assume bear form as a Beorning. Activate dragon scale mail to breathe in
++its dragon form once it has recharged.
  
    a    Zap a rod (Activate)            A    Activate an object
    b    (walk - south west)             B    (run - south west)
+@@ -33,7 +33,7 @@ when the autoexplore_commands option is on.
+   p    - (see above)                   P    Browse a book
+   q    Quaff a potion                  Q    Retire character & quit
+   r    Read a scroll                   R    Rest for a period
+-  s    Steal from a monster (rogues)   S    Interact with specialties
++  s    Steal from a monster            S    Interact with specialties
+   t    Fire an item                    T    Take off equipment
+   u    (walk - north east)             U    (run - north east)
+   v    Throw an item                   V    Display version info
+@@ -41,7 +41,7 @@ when the autoexplore_commands option is on.
+   x    Look around                     X    Use an item
+   y    (walk - north west)             Y    (run - north west)
+   z    Aim a wand (Zap)                Z    Use a staff (Zap)
+-  !    Change shape (Beornings)        ^a   (special - debug command)
++  !    Change shape                    ^a   (special - debug command)
+   @    Center map                      ^b   (alter - south west)
+   #    Check time                      ^c   (special - break)
+   $    Move house                      ^d   Ignore an item
 diff --git a/src/Makefile.inc b/src/Makefile.inc
 index 93b67e9..278013d 100644
 --- a/src/Makefile.inc
@@ -218,7 +296,7 @@ index d09e0ed..913d42d 100644
  	int light;
  	int16_t mon;
 diff --git a/src/cmd-cave.c b/src/cmd-cave.c
-index 626df6b..1c2a417 100644
+index 626df6b..388b1c0 100644
 --- a/src/cmd-cave.c
 +++ b/src/cmd-cave.c
 @@ -49,6 +49,9 @@
@@ -231,6 +309,15 @@ index 626df6b..1c2a417 100644
  
  /**
   * Move house to the current town
+@@ -126,7 +129,7 @@ void do_cmd_move_house(struct command *cmd)
+ /**
+  * Get the direction a path is heading
+  */
+-static const char *path_direction(int feat)
++const char *path_direction(int feat)
+ {
+ 	if (feat == FEAT_LESS_NORTH) return "north";
+ 	if (feat == FEAT_MORE_NORTH) return "north";
 @@ -1133,11 +1136,6 @@ void do_cmd_disarm(struct command *cmd)
   */
  static void do_cmd_set_trap(struct loc grid)
@@ -253,7 +340,34 @@ index 626df6b..1c2a417 100644
  		msg("You must disarm an existing trap to free up your equipment.");
  		return;
  	}
-@@ -1300,14 +1297,36 @@ void move_player(int dir, bool disarm)
+@@ -1242,6 +1239,26 @@ void do_cmd_alter(struct command *cmd)
+ 	if (cmd_get_direction(cmd, "direction", &dir, false) != CMD_OK)
+ 		return;
+ 
++#ifdef __EMSCRIPTEN__
++	int improve;
++	if (cmd_get_arg_choice(cmd, "improve trap", &improve) == CMD_OK) {
++		struct loc grid = next_grid(player->grid, dir);
++		cmd_set_repeat(0);
++		cmd_disable_repeat();
++		if (player->timed[TMD_CONFUSED] || player->timed[TMD_IMAGE] ||
++				player->timed[TMD_BLIND] || no_light(player)) return;
++		player->upkeep->energy_use = z_info->move_energy;
++		if (!improve && player_has(player, PF_TRAP) &&
++				!square_monster(cave, grid) && square_player_trap_allowed(cave, grid)) {
++			do_cmd_set_trap(grid);
++		} else if (improve && !square_monster(cave, grid) && square_isbasicmonstertrap(cave, grid)) {
++			modify_monster_trap(grid);
++		} else {
++			msg("You cannot work on a trap there.");
++		}
++		return;
++	}
++#endif
+ 	do_cmd_alter_aux(dir);
+ }
+ 
+@@ -1300,14 +1317,36 @@ void move_player(int dir, bool disarm)
  	/* Many things can happen on movement */
  	if (m_idx > 0) {
  		/* Attack monsters */
@@ -290,7 +404,7 @@ index 626df6b..1c2a417 100644
  	} else if (((trap && disarm) || door) && square_isknown(cave, grid)) {
  		/* Auto-repeat if not already repeating */
  		if (cmd_get_nrepeats() == 0)
-@@ -1379,6 +1398,8 @@ void move_player(int dir, bool disarm)
+@@ -1379,6 +1418,8 @@ void move_player(int dir, bool disarm)
  		if (player->upkeep->running
  				&& !player->upkeep->running_firststep
  				&& old_dtrap && !new_dtrap) {
@@ -299,7 +413,7 @@ index 626df6b..1c2a417 100644
  			disturb(player);
  			/* No move made so no energy spent. */
  			player->upkeep->energy_use = 0;
-@@ -1724,54 +1745,132 @@ void do_cmd_navigate_up(struct command *cmd)
+@@ -1724,54 +1765,132 @@ void do_cmd_navigate_up(struct command *cmd)
  	msg("No known path to upstairs.");
  }
  
@@ -458,7 +572,7 @@ index 626df6b..1c2a417 100644
  }
  
  
-@@ -1868,8 +1967,6 @@ void do_cmd_rest(struct command *cmd)
+@@ -1868,8 +1987,6 @@ void do_cmd_rest(struct command *cmd)
  
  	/* Do some upkeep on the first turn of rest */
  	if (!player_is_resting(player)) {
@@ -467,7 +581,7 @@ index 626df6b..1c2a417 100644
  		/* If a number of turns was entered, remember it */
  		if (n > 1)
  			player_set_resting_repeat_count(player, n);
-@@ -1878,17 +1975,9 @@ void do_cmd_rest(struct command *cmd)
+@@ -1878,17 +1995,9 @@ void do_cmd_rest(struct command *cmd)
  			n = player_get_resting_repeat_count(player);
  	}
  
@@ -486,6 +600,23 @@ index 626df6b..1c2a417 100644
  	/* Prepare to continue, or cancel and clean up */
  	if (player_resting_count(player) > 0) {
  		cmdq_push(CMD_REST);
+@@ -2033,6 +2142,7 @@ void do_cmd_mon_command(struct command *cmd)
+ 	struct monster_lore *lore = NULL;
+ 	char m_name[80];
+ 
++	cmd_disable_repeat();
+ 	assert(mon);
+ 	lore = get_lore(mon->race);
+ 
+@@ -2056,7 +2166,7 @@ void do_cmd_mon_command(struct command *cmd)
+ 
+ 			/* Choose a target monster */
+ 			target_set_monster(NULL);
+-			get_aim_dir(&dir);
++			if (!get_aim_dir(&dir)) return;
+ 			t_mon = target_get_monster();
+ 			if (!t_mon) {
+ 				msg("No target monster selected!");
 diff --git a/src/cmd-core.c b/src/cmd-core.c
 index 19c9629..e036886 100644
 --- a/src/cmd-core.c
@@ -605,7 +736,7 @@ index 19c9629..e036886 100644
  		return CMD_OK;
  	}
 diff --git a/src/cmd-misc.c b/src/cmd-misc.c
-index b79386f..27a0114 100644
+index b79386f..a53fcc6 100644
 --- a/src/cmd-misc.c
 +++ b/src/cmd-misc.c
 @@ -41,6 +41,10 @@ void do_cmd_wizard(void)
@@ -627,6 +758,26 @@ index b79386f..27a0114 100644
  
  		/* Mark savefile */
  		player->noscore |= NOSCORE_WIZARD;
+@@ -147,16 +152,7 @@ void do_cmd_note(void)
+  */
+ void do_cmd_time(void)
+ {
+-	int32_t len = 10L * z_info->day_length;
+-	int32_t tick = turn % len + len / 4;
+-
+-	int day = turn / len + 1;
+-	int hour = (24 * tick / len) % 24;
+-	int min = (1440 * tick / len) % 60;
+-
+-
+-	/* Message */
+-	msg("This is day %d. The time is %d:%02d %s.", day,
+-		(hour % 12 == 0) ? 12 : (hour % 12), min,
+-		(hour < 12) ? "AM" : "PM");
++	char time[24];
++	format_game_time(time, sizeof(time));
++	msg("This is day %d. The time is %s.", (int)(turn / (10L * z_info->day_length)) + 1, time);
+ }
 diff --git a/src/cmd-obj.c b/src/cmd-obj.c
 index 33ba820..1b5e8c3 100644
 --- a/src/cmd-obj.c
@@ -972,10 +1123,18 @@ index c0d5fbc..7a9f503 100644
  	}
  
 diff --git a/src/cmds.h b/src/cmds.h
-index 036f2e6..f325725 100644
+index 036f2e6..1ec0b1c 100644
 --- a/src/cmds.h
 +++ b/src/cmds.h
-@@ -77,6 +77,7 @@ void do_cmd_study_book(struct command *cmd);
+@@ -54,6 +54,7 @@ void do_cmd_retire(struct command *cmd);
+ void do_cmd_reshape(struct command *cmd);
+ void do_cmd_note(void);
+ void do_cmd_time(void);
++const char *path_direction(int feat);
+ 
+ /* cmd-obj.c */
+ void do_cmd_uninscribe(struct command *cmd);
+@@ -77,6 +78,7 @@ void do_cmd_study_book(struct command *cmd);
  void do_cmd_study(struct command *cmd);
  
  /* cmd-pickup.c */
@@ -984,7 +1143,7 @@ index 036f2e6..f325725 100644
  void do_cmd_pickup(struct command *cmd);
  void do_cmd_autopickup(struct command *cmd);
 diff --git a/src/effect-handler-general.c b/src/effect-handler-general.c
-index 9e205da..4a005aa 100644
+index 9e205da..9b77437 100644
 --- a/src/effect-handler-general.c
 +++ b/src/effect-handler-general.c
 @@ -1187,7 +1187,7 @@ bool effect_handler_RECALL(effect_handler_context_t *context)
@@ -996,11 +1155,36 @@ index 9e205da..4a005aa 100644
  					player->recall[point] = place;
  				}
  
+@@ -3837,7 +3837,7 @@ bool effect_handler_DRAGON(effect_handler_context_t *context)
+ 					  0, 0, 0, &ident);
+ 	} else {
+ 		/* ...or breathe */
+-		get_aim_dir(&dir);
++		if (!get_aim_dir(&dir)) return false;
+ 		player_confuse_dir(player, &dir, false);
+ 		return effect_do(shape->breath->effect, source_player(), NULL, &ident,
+ 						 true, dir, 0, 0, NULL);
 diff --git a/src/game-world.c b/src/game-world.c
-index b33a198..57e38d4 100644
+index b33a198..e11cca9 100644
 --- a/src/game-world.c
 +++ b/src/game-world.c
-@@ -936,6 +936,9 @@ static void process_player_cleanup(void)
+@@ -228,6 +228,15 @@ int themed_level_index(const char *name)
+  * ------------------------------------------------------------------------
+  * Functions for handling turn-based events
+  * ------------------------------------------------------------------------ */
++void format_game_time(char *buf, size_t size)
++{
++	int32_t len = 10L * z_info->day_length;
++	int32_t tick = turn % len + len / 4;
++	int hour = (24 * tick / len) % 24;
++	int min = (1440 * tick / len) % 60;
++	strnfmt(buf, size, "%d:%02d %s", hour % 12 ? hour % 12 : 12, min, hour < 12 ? "AM" : "PM");
++}
++
+ /**
+  * Say whether it's daytime or not
+  */
+@@ -936,6 +945,9 @@ static void process_player_cleanup(void)
  
  	/* Significant */
  	if (player->upkeep->energy_use) {
@@ -1010,7 +1194,7 @@ index b33a198..57e38d4 100644
  		/* Use some energy */
  		player->energy -= player->upkeep->energy_use;
  
-@@ -1081,8 +1084,10 @@ void process_player(void)
+@@ -1081,8 +1093,10 @@ void process_player(void)
  		}
  
  		/* Get a command from the queue if there is one */
@@ -1022,7 +1206,7 @@ index b33a198..57e38d4 100644
  
  		if (!player->upkeep->playing)
  			break;
-@@ -1167,6 +1172,11 @@ void on_new_level(void)
+@@ -1167,6 +1181,11 @@ void on_new_level(void)
   * Housekeeping on leaving a level
   */
  static void on_leave_level(void) {
@@ -1034,6 +1218,18 @@ index b33a198..57e38d4 100644
  	/* Cancel any command */
  	player_clear_timed(player, TMD_COMMAND, false, false);
  
+diff --git a/src/game-world.h b/src/game-world.h
+index 9ec66de..cbfe07d 100644
+--- a/src/game-world.h
++++ b/src/game-world.h
+@@ -84,6 +84,7 @@ struct town *town_by_name(struct level_map *map, const char *name);
+ int level_topography(int index);
+ struct vault *themed_level(int index);
+ int themed_level_index(const char *name);
++void format_game_time(char *buf, size_t size);
+ bool is_daytime(void);
+ bool outside(void);
+ bool is_daylight(void);
 diff --git a/src/list-options.h b/src/list-options.h
 index e99cde1..f7caf7c 100644
 --- a/src/list-options.h
@@ -1839,7 +2035,7 @@ index 7679b38..e9d32b4 100644
  
  #endif /* !PLAYER_PATH_H */
 diff --git a/src/player-util.c b/src/player-util.c
-index d64a083..c98cdf1 100644
+index d64a083..3812aba 100644
 --- a/src/player-util.c
 +++ b/src/player-util.c
 @@ -291,9 +291,7 @@ int player_apply_damage_reduction(struct player *p, int dam)
@@ -1863,7 +2059,23 @@ index d64a083..c98cdf1 100644
  
  				/* No longer a winner */
  				p->total_winner = false;
-@@ -1706,6 +1706,18 @@ void player_resting_step_turn(struct player *p)
+@@ -1240,11 +1240,15 @@ bool player_get_resume_normal_shape(struct player *p, struct command *cmd)
+ {
+ 	if (player_is_shapechanged(p)) {
+ 		msg("You cannot do this while in %s form.", p->shape->name);
++#ifdef __EMSCRIPTEN__
++		char answer = web_choose_shape_action(cmd_verb(cmd->code));
++#else
+ 		char prompt[100];
+ 		strnfmt(prompt, sizeof(prompt),
+ 		        "Change back and %s (y/n) or (r)eturn to normal? ",
+ 		        cmd_verb(cmd->code));
+ 		char answer = get_char(prompt, "yrn", 3, 'n');
++#endif
+ 
+ 		// Change back to normal shape
+ 		if (answer == 'y' || answer == 'r') {
+@@ -1706,6 +1710,18 @@ void player_resting_step_turn(struct player *p)
  	player_turns_rested++;
  }
  
@@ -1874,7 +2086,7 @@ index d64a083..c98cdf1 100644
 +		!p->timed[TMD_BLIND] && !p->timed[TMD_CONFUSED] &&
 +		!p->timed[TMD_POISONED] && !p->timed[TMD_AFRAID] &&
 +		!p->timed[TMD_TERROR] && !p->timed[TMD_STUN] &&
-+		!p->timed[TMD_CUT] && !p->timed[TMD_SLOW] &&
++		(!p->timed[TMD_CUT] || player_has(p, PF_ROCK)) && !p->timed[TMD_SLOW] &&
 +		!p->timed[TMD_PARALYZED] && !p->timed[TMD_IMAGE] &&
 +		!p->word_recall && !p->deep_descent;
 +}
@@ -1882,7 +2094,7 @@ index d64a083..c98cdf1 100644
  /**
   * Handle the conditions for conditional resting (resting with the REST_
   * constants).
-@@ -1720,14 +1732,7 @@ void player_resting_complete_special(struct player *p)
+@@ -1720,14 +1736,7 @@ void player_resting_complete_special(struct player *p)
  			/* Stop resting */
  			disturb(p);
  	} else if (p->upkeep->resting == REST_COMPLETE) {
@@ -1898,7 +2110,7 @@ index d64a083..c98cdf1 100644
  			/* Stop resting */
  			disturb(p);
  	} else if (p->upkeep->resting == REST_SOME_POINTS) {
-@@ -1851,6 +1856,9 @@ void player_place(struct chunk *c, struct player *p, struct loc grid)
+@@ -1851,6 +1860,9 @@ void player_place(struct chunk *c, struct player *p, struct loc grid)
  void player_handle_post_move(struct player *p, bool eval_trap,
  		bool is_involuntary)
  {
@@ -1908,7 +2120,7 @@ index d64a083..c98cdf1 100644
  	/* Handle store doors, or notice objects */
  	if (square_isshop(cave, p->grid)) {
  		if ((player_is_shapechanged(p) &&
-@@ -1904,6 +1912,29 @@ void player_handle_post_move(struct player *p, bool eval_trap,
+@@ -1904,6 +1916,29 @@ void player_handle_post_move(struct player *p, bool eval_trap,
  	search(p);
  }
  
@@ -1938,7 +2150,7 @@ index d64a083..c98cdf1 100644
  /*
   * Something has happened to disturb the player.
   *
-@@ -1914,17 +1945,20 @@ void player_handle_post_move(struct player *p, bool eval_trap,
+@@ -1914,17 +1949,20 @@ void player_handle_post_move(struct player *p, bool eval_trap,
   */
  void disturb(struct player *p)
  {
@@ -1961,7 +2173,7 @@ index d64a083..c98cdf1 100644
  		p->upkeep->running = 0;
  		mem_free(p->upkeep->steps);
  		p->upkeep->steps = NULL;
-@@ -1942,6 +1976,9 @@ void disturb(struct player *p)
+@@ -1942,6 +1980,9 @@ void disturb(struct player *p)
  
  	/* Flush input */
  	event_signal(EVENT_INPUT_FLUSH);
@@ -1971,7 +2183,7 @@ index d64a083..c98cdf1 100644
  }
  
  /**
-@@ -1963,9 +2000,11 @@ void search(struct player *p)
+@@ -1963,9 +2004,11 @@ void search(struct player *p)
  
  			/* Secret doors */
  			if (square_issecretdoor(cave, grid)) {
@@ -1985,7 +2197,7 @@ index d64a083..c98cdf1 100644
  			}
  
  			/* Traps on chests */
-@@ -1976,9 +2015,11 @@ void search(struct player *p)
+@@ -1976,9 +2019,11 @@ void search(struct player *p)
  				}
  
  				if (obj->known->pval != obj->pval) {
@@ -4327,10 +4539,18 @@ index d805f11..8d5dce6 100644
  /**
   * Convert a keypress into something the user can read (not designed to be used
 diff --git a/src/ui-game.c b/src/ui-game.c
-index e0133fd..7147e3a 100644
+index e0133fd..5ba48ac 100644
 --- a/src/ui-game.c
 +++ b/src/ui-game.c
-@@ -179,7 +179,9 @@ struct cmd_info cmd_info[] =
+@@ -33,6 +33,7 @@
+ #include "player-calcs.h"
+ #include "player-path.h"
+ #include "player-properties.h"
++#include "player-timed.h"
+ #include "player-util.h"
+ #include "savefile.h"
+ #include "target.h"
+@@ -179,7 +180,9 @@ struct cmd_info cmd_info[] =
  	{ "Locate player on map", { 'L', 'W' }, CMD_NULL, do_cmd_locate, NULL, 0, NULL, NULL, NULL, 0 },
  	{ "Help", { '?' }, CMD_NULL, do_cmd_help, NULL, 0, NULL, NULL, NULL, 0 },
  	{ "Identify symbol", { '/' }, CMD_NULL, do_cmd_query_symbol, NULL, 0, NULL, NULL, NULL, 0 },
@@ -4340,7 +4560,7 @@ index e0133fd..7147e3a 100644
  	{ "Check knowledge", { '~' }, CMD_NULL, textui_browse_knowledge, NULL, 0, NULL, NULL, NULL, 0 },
  	{ "Repeat level feeling", { KTRL('F') }, CMD_NULL, do_cmd_feeling, NULL, 0, NULL, NULL, NULL, 0 },
  	{ "Show previous message", { KTRL('O') }, CMD_NULL, do_cmd_message_one, NULL, 0, NULL, NULL, NULL, 0 },
-@@ -277,7 +279,9 @@ struct cmd_info cmd_debug_effects[] =
+@@ -277,7 +280,9 @@ struct cmd_info cmd_debug_effects[] =
  	{ "Map local area", { 'm' }, CMD_WIZ_MAGIC_MAP, NULL, player_can_debug_prereq, 0, NULL, NULL, NULL, 0 },
  	{ "Hit all in LOS", { 'H' }, CMD_WIZ_HIT_ALL_LOS, NULL, player_can_debug_prereq, 0, NULL, NULL, NULL, 0 },
  	{ "Perform an effect", { 'E' }, CMD_WIZ_PERFORM_EFFECT, NULL, player_can_debug_prereq, 0, NULL, NULL, NULL, 0 },
@@ -4350,7 +4570,7 @@ index e0133fd..7147e3a 100644
  };
  
  struct cmd_info cmd_debug_summon[] =
-@@ -302,7 +306,9 @@ struct cmd_info cmd_debug_stats[] =
+@@ -302,7 +307,9 @@ struct cmd_info cmd_debug_stats[] =
  
  struct cmd_info cmd_debug_query[] =
  {
@@ -4360,7 +4580,7 @@ index e0133fd..7147e3a 100644
  	{ "Square flag", { 'q' }, CMD_WIZ_QUERY_SQUARE_FLAG, NULL, player_can_debug_prereq, 0, NULL, NULL, NULL, 0 },
  	{ "Noise and scent", { '_' }, CMD_WIZ_PEEK_NOISE_SCENT, NULL, player_can_debug_prereq, 0, NULL, NULL, NULL, 0 },
  	{ "Keystroke log", { 'L' }, CMD_NULL, wiz_display_keylog, player_can_debug_prereq, 0, NULL, NULL, NULL, 0 },
-@@ -536,6 +542,17 @@ void textui_process_command(void)
+@@ -536,6 +543,20 @@ void textui_process_command(void)
  			}
  			textui_quit();
  			return;
@@ -4371,6 +4591,9 @@ index e0133fd..7147e3a 100644
 +		case EVT_WEB_CHARACTER:
 +			if (key_confirm_command('C')) do_cmd_change_name();
 +			return;
++		case EVT_WEB_QUICK_ACTION:
++			web_quick_action(e.key.code);
++			return;
 +		case EVT_WEB_RUN_DIRECTION:
 +			web_run_direction(e.key.code);
 +			return;
@@ -4378,7 +4601,7 @@ index e0133fd..7147e3a 100644
  		case EVT_RESIZE: do_cmd_redraw(); return;
  		case EVT_MOUSE: textui_process_click(e); return;
  		case EVT_BUTTON:
-@@ -566,11 +583,19 @@ void textui_process_command(void)
+@@ -566,11 +587,19 @@ void textui_process_command(void)
  			 * inherit the count.
  			 */
  			while (cmd && !cmd->cmd && !cmd->hook) {
@@ -4400,7 +4623,7 @@ index e0133fd..7147e3a 100644
  					if (get_com(cmd->nested_prompt, &nestkey)) {
  						const char* em =
  							cmd->nested_error;
-@@ -582,6 +607,7 @@ void textui_process_command(void)
+@@ -582,6 +611,7 @@ void textui_process_command(void)
  					} else {
  						cmd = NULL;
  					}
@@ -4408,7 +4631,17 @@ index e0133fd..7147e3a 100644
  				} else {
  					cmd = NULL;
  				}
-@@ -636,15 +662,21 @@ errr textui_get_cmd(cmd_context context)
+@@ -589,7 +619,8 @@ void textui_process_command(void)
+ 		}
+ 
+ 		/* Check prereqs. */
+-		if (cmd && cmd->prereq && !cmd->prereq()) cmd = NULL;
++		if (cmd && cmd->prereq && !(player->timed[TMD_COMMAND] &&
++				(cmd->cmd == CMD_READ_SCROLL || cmd->cmd == CMD_CAST)) && !cmd->prereq()) cmd = NULL;
+ 
+ 		/* Split on type of command */
+ 		if (cmd && cmd->hook) {
+@@ -636,15 +667,21 @@ errr textui_get_cmd(cmd_context context)
  /**
   * Allow for user abort during repeated commands, running and resting.
   *
@@ -4433,7 +4666,7 @@ index e0133fd..7147e3a 100644
  		ui_event e;
  
  		/* Do not wait */
-@@ -655,6 +687,9 @@ void check_for_player_interrupt(game_event_type type, game_event_data *data,
+@@ -655,6 +692,9 @@ void check_for_player_interrupt(game_event_type type, game_event_data *data,
  		if (e.type != EVT_NONE) {
  			/* Flush and disturb */
  			event_signal(EVENT_INPUT_FLUSH);
@@ -4443,7 +4676,7 @@ index e0133fd..7147e3a 100644
  			disturb(player);
  			msg("Cancelled.");
  		}
-@@ -772,6 +807,34 @@ static void cleanup_savefile_selection_strings(char **entries, int count)
+@@ -772,6 +812,34 @@ static void cleanup_savefile_selection_strings(char **entries, int count)
  	mem_free(entries);
  }
  
@@ -4478,7 +4711,7 @@ index e0133fd..7147e3a 100644
  /**
   * Help play_game():  implement the savefile selection menu.
   *
-@@ -779,10 +842,16 @@ static void cleanup_savefile_selection_strings(char **entries, int count)
+@@ -779,10 +847,16 @@ static void cleanup_savefile_selection_strings(char **entries, int count)
   * by an earlier one could not be loaded.
   * \param new_game points to a boolean.  The pointed to value at entry is not
   * used.  At exit *new_game will be true if the user selected to start a new
@@ -4497,7 +4730,7 @@ index e0133fd..7147e3a 100644
  	/* Build the list of selections. */
  	savefile_getter g = NULL;
  	/*
-@@ -882,6 +951,14 @@ static void select_savefile(bool retry, bool *new_game)
+@@ -882,6 +956,14 @@ static void select_savefile(bool retry, bool *new_game)
  	menu_layout(m, &m_region);
  	m->cursor = default_entry;
  	m->flags |= MN_DBL_TAP;
@@ -4512,7 +4745,7 @@ index e0133fd..7147e3a 100644
  
  	screen_save();
  	prt("Select the save to use (movement keys and enter or mouse) or quit",
-@@ -889,11 +966,38 @@ static void select_savefile(bool retry, bool *new_game)
+@@ -889,11 +971,38 @@ static void select_savefile(bool retry, bool *new_game)
  	prt("(escape or second mouse button).", 1, 0);
  	prt((retry) ? "The previously selected savefile was unusable." : "",
  		2, 0);
@@ -4552,7 +4785,7 @@ index e0133fd..7147e3a 100644
  			*new_game = true;
  		} else {
  			*new_game = false;
-@@ -908,8 +1012,14 @@ static void select_savefile(bool retry, bool *new_game)
+@@ -908,8 +1017,14 @@ static void select_savefile(bool retry, bool *new_game)
  	cleanup_savefile_selection_strings(entries, count);
  
  	if (selection.type == EVT_ESCAPE) {
@@ -4567,7 +4800,7 @@ index e0133fd..7147e3a 100644
  }
  
  /**
-@@ -924,6 +1034,12 @@ void play_game(enum game_mode_type mode)
+@@ -924,6 +1039,12 @@ void play_game(enum game_mode_type mode)
  		switch (mode) {
  		case GAME_LOAD:
  		case GAME_NEW:
@@ -4580,7 +4813,7 @@ index e0133fd..7147e3a 100644
  			if (!start_game(mode == GAME_NEW)) {
  				quit("Broken savefile");
  			}
-@@ -934,7 +1050,9 @@ void play_game(enum game_mode_type mode)
+@@ -934,7 +1055,9 @@ void play_game(enum game_mode_type mode)
  				bool new_game = false, retry = false;
  
  				while (1) {
@@ -4591,7 +4824,7 @@ index e0133fd..7147e3a 100644
  					if (start_game(new_game)) {
  						break;
  					}
-@@ -960,6 +1078,14 @@ void play_game(enum game_mode_type mode)
+@@ -960,6 +1083,14 @@ void play_game(enum game_mode_type mode)
  		/* Close game on death or quitting */
  		close_game(true);
  
@@ -4606,7 +4839,7 @@ index e0133fd..7147e3a 100644
  		if (!play_again) break;
  
  		cleanup_angband();
-@@ -1024,6 +1150,19 @@ bool savefile_name_already_used(const char *fname, bool make_safe,
+@@ -1024,6 +1155,19 @@ bool savefile_name_already_used(const char *fname, bool make_safe,
  	return result;
  }
  
@@ -4626,7 +4859,7 @@ index e0133fd..7147e3a 100644
  /**
   * Save the game.
   */
-@@ -1048,7 +1187,7 @@ bool save_game_checked(void)
+@@ -1048,7 +1192,7 @@ bool save_game_checked(void)
  	disturb(player);
  
  	/* Clear messages */
@@ -4635,7 +4868,7 @@ index e0133fd..7147e3a 100644
  
  	/* Handle stuff */
  	handle_stuff(player);
-@@ -1062,18 +1201,6 @@ bool save_game_checked(void)
+@@ -1062,18 +1206,6 @@ bool save_game_checked(void)
  	/* The player is not dead */
  	my_strcpy(player->died_from, "(saved)", sizeof(player->died_from));
  
@@ -4654,7 +4887,7 @@ index e0133fd..7147e3a 100644
  	/* Save the window prefs */
  	path_build(path, sizeof(path), ANGBAND_DIR_USER, "window.prf");
  	if (!prefs_save(path, option_dump, "Dump window settings"))
-@@ -1088,6 +1215,15 @@ bool save_game_checked(void)
+@@ -1088,6 +1220,15 @@ bool save_game_checked(void)
  		event_signal(EVENT_MESSAGE_FLUSH);
  	}
  
@@ -4670,7 +4903,7 @@ index e0133fd..7147e3a 100644
  	/* Refresh */
  	Term_fresh();
  
-@@ -1104,10 +1240,8 @@ bool save_game_checked(void)
+@@ -1104,10 +1245,8 @@ bool save_game_checked(void)
   * \param prompt_failed_save If true, prompt the user to retry if saving fails.
   * Otherwise, no prompt is issued.
   *
@@ -4683,7 +4916,7 @@ index e0133fd..7147e3a 100644
   */
  void close_game(bool prompt_failed_save)
  {
-@@ -1137,19 +1271,28 @@ void close_game(bool prompt_failed_save)
+@@ -1137,19 +1276,28 @@ void close_game(bool prompt_failed_save)
  	/* Handle death or life */
  	if (player->is_dead) {
  		death_knowledge(player);
@@ -4713,7 +4946,7 @@ index e0133fd..7147e3a 100644
  	} else {
  		/* Save the game */
  		while (prompting && !save_game_checked()) {
-@@ -1159,6 +1302,10 @@ void close_game(bool prompt_failed_save)
+@@ -1159,6 +1307,10 @@ void close_game(bool prompt_failed_save)
  			}
  		}
  
@@ -4724,7 +4957,7 @@ index e0133fd..7147e3a 100644
  		if (Term->mapped_flag && !terms_disconnecting) {
  			struct keypress ch;
  
-@@ -1167,6 +1314,7 @@ void close_game(bool prompt_failed_save)
+@@ -1167,6 +1319,7 @@ void close_game(bool prompt_failed_save)
  			if (ch.code != ESCAPE)
  				predict_score(false);
  		}
@@ -4791,7 +5024,7 @@ index b689c40..4b9cb0e 100644
  
  
 diff --git a/src/ui-input.c b/src/ui-input.c
-index 516b0d7..fdf91ef 100644
+index 516b0d7..d5be305 100644
 --- a/src/ui-input.c
 +++ b/src/ui-input.c
 @@ -302,6 +302,9 @@ struct keypress inkey(void)
@@ -5311,17 +5544,19 @@ index 516b0d7..fdf91ef 100644
  					ke = inkey_ex();
  				}
  			}
-@@ -1684,6 +1913,18 @@ static bool textui_get_aim_dir(int *dp)
+@@ -1684,6 +1913,20 @@ static bool textui_get_aim_dir(int *dp)
  	return (true);
  }
  
 +#ifdef __EMSCRIPTEN__
 +bool web_get_map_aim_dir(int *dir, struct loc grid)
 +{
-+	if (!square_in_bounds(cave, grid)) return false;
++	if (!square_in_bounds_fully(cave, grid)) return false;
 +	struct monster *mon = square_monster(cave, grid);
-+	if (!target_able(mon)) return false;
-+	target_set_monster(mon);
++	if (target_able(mon))
++		target_set_monster(mon);
++	else
++		target_set_location(grid.y, grid.x);
 +	*dir = DIR_TARGET;
 +	return true;
 +}
@@ -5330,7 +5565,7 @@ index 516b0d7..fdf91ef 100644
  /**
   * Get a location from the user.
   *
-@@ -1796,9 +2037,21 @@ static int textui_get_count(void)
+@@ -1796,9 +2039,21 @@ static int textui_get_count(void)
  	while (1) {
  		struct keypress ke;
  
@@ -5352,7 +5587,7 @@ index 516b0d7..fdf91ef 100644
  		if (ke.code == ESCAPE)
  			return -1;
  
-@@ -1887,6 +2140,21 @@ ui_event textui_get_command(int *count)
+@@ -1887,6 +2142,21 @@ ui_event textui_get_command(int *count)
  		if (ke.type == EVT_DISCONNECT) {
  			break;
  		}
@@ -5375,10 +5610,10 @@ index 516b0d7..fdf91ef 100644
  			bool keymap_ok = true;
  			switch (ke.key.code) {
 diff --git a/src/ui-input.h b/src/ui-input.h
-index 1182f0e..a0f1cc2 100644
+index 1182f0e..bdf1f56 100644
 --- a/src/ui-input.h
 +++ b/src/ui-input.h
-@@ -24,6 +24,141 @@
+@@ -24,6 +24,143 @@
  #include "ui-event.h"
  #include "ui-term.h"
  
@@ -5397,6 +5632,8 @@ index 1182f0e..a0f1cc2 100644
 +enum web_input_mode web_set_input_mode(enum web_input_mode mode);
 +struct menu;
 +struct store;
++char web_choose_shape_action(const char *verb);
++bool web_quick_action(int key);
 +const char *web_set_prompt(const char *prompt);
 +bool web_get_command_string(struct command *cmd, const char *title, const char *prompt, char *buf, size_t size);
 +bool web_edit_autoinscription(struct object_kind *kind, const char *rune, const char *note,
@@ -5520,7 +5757,7 @@ index 1182f0e..a0f1cc2 100644
  /**
   * Holds a generic command.  If hook is not NULL, that function
   * will be called.  Otherwise, if cmd is not CMD_NULL, that command
-@@ -67,6 +202,10 @@ struct command_list
+@@ -67,6 +204,10 @@ struct command_list
  	int keymap;
  };
  
@@ -5531,7 +5768,7 @@ index 1182f0e..a0f1cc2 100644
  #define SCAN_INSTANT ((uint32_t) -1)
  #define SCAN_OFF 0
  
-@@ -104,6 +243,7 @@ ui_event inkey_m(void);
+@@ -104,6 +245,7 @@ ui_event inkey_m(void);
  void display_message(game_event_type unused, game_event_data *data, void *user);
  void bell_message(game_event_type unused, game_event_data *data, void *user);
  void message_flush(game_event_type unused, game_event_data *data, void *user);
@@ -5539,7 +5776,7 @@ index 1182f0e..a0f1cc2 100644
  void clear_from(int row);
  bool askfor_aux_keypress(char *buf, size_t buflen, size_t *curs, size_t *len,
  						 struct keypress keypress, bool firsttime);
-@@ -114,6 +254,7 @@ bool askfor_aux_ext(char *buf, size_t len,
+@@ -114,6 +256,7 @@ bool askfor_aux_ext(char *buf, size_t len,
  	bool (*keypress_h)(char *, size_t, size_t *, size_t *, struct keypress, bool),
  	int (*mouse_h)(char *, size_t, size_t *, size_t *, struct mouseclick, bool));
  bool get_character_name(char *buf, size_t buflen);
@@ -9590,6 +9827,52 @@ index 4827b5d..dcd74fb 100644
  
  			/* Restrict cursor to inbounds */
  			x = MAX(0, MIN(x, cave->width - 1));
+diff --git a/src/ui-term.c b/src/ui-term.c
+index 929b0f6..d4ce900 100644
+--- a/src/ui-term.c
++++ b/src/ui-term.c
+@@ -2554,7 +2554,7 @@ static void log_keypress(ui_event e)
+ /**
+  * Add a keypress to the "queue"
+  */
+-errr Term_keypress(keycode_t k, uint8_t mods)
++errr Term_keypress_as(ui_event_type type, keycode_t k, uint8_t mods)
+ {
+ 	/* Refuse to enqueue non-keys */
+ 	if (!k) return (-1);
+@@ -2581,7 +2581,7 @@ errr Term_keypress(keycode_t k, uint8_t mods)
+ 	/* Store the char, advance the queue */
+ 	Term->key_queue[Term->key_head] = (ui_event){
+ 		.key = {
+-			.type = EVT_KBRD,
++			.type = type,
+ 			.code = k,
+ 			.mods = mods
+ 		}
+@@ -2598,6 +2598,11 @@ errr Term_keypress(keycode_t k, uint8_t mods)
+ 	return (1);
+ }
+ 
++errr Term_keypress(keycode_t k, uint8_t mods)
++{
++	return Term_keypress_as(EVT_KBRD, k, mods);
++}
++
+ /**
+  * Add a mouse event to the "queue"
+  */
+diff --git a/src/ui-term.h b/src/ui-term.h
+index c2c47b2..94a78d0 100644
+--- a/src/ui-term.h
++++ b/src/ui-term.h
+@@ -402,6 +402,7 @@ extern errr Term_what(int x, int y, int *a, wchar_t *c);
+ extern errr Term_flush(void);
+ extern errr Term_mousepress(int x, int y, char button);
+ extern errr Term_keypress(keycode_t k, uint8_t mods);
++extern errr Term_keypress_as(ui_event_type type, keycode_t k, uint8_t mods);
+ extern errr Term_key_push(keycode_t k, uint8_t mods);
+ extern errr Term_event_push(const ui_event *ke);
+ extern errr Term_inkey(ui_event *ch, bool wait, bool take);
 diff --git a/src/ui-wizard.c b/src/ui-wizard.c
 index 454c88a..978c8f2 100644
 --- a/src/ui-wizard.c
