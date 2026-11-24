@@ -1082,6 +1082,11 @@ static bool has_learned_spell(void)
     return false;
 }
 
+static bool can_change_shape(void)
+{
+    return player_is_shapechanged(player) || player_has(player, PF_BEARSKIN);
+}
+
 static void publish_quick_actions(void)
 {
     bool launcher = player_can_fire(player, false);
@@ -1098,7 +1103,7 @@ static void publish_quick_actions(void)
     }
 
     send_quick_actions(spell_action, launcher, player_has(player, PF_STEAL),
-        player_is_shapechanged(player) || player_has(player, PF_BEARSKIN),
+        can_change_shape(),
         web_repeat_label());
 }
 
@@ -1475,7 +1480,8 @@ enum web_map_action {
     MAP_EAT, MAP_REFILL, MAP_EQUIP_LIGHT, MAP_PICKUP, MAP_GO_UP, MAP_GO_DOWN,
     MAP_OPEN, MAP_CLOSE, MAP_DISARM, MAP_TUNNEL, MAP_OPEN_CHEST, MAP_DISARM_CHEST,
     MAP_STUDY, MAP_LEARN_SPECIALTY, MAP_REST, MAP_JUMP, MAP_WALK, MAP_ATTACK, MAP_STEAL, MAP_FIRE, MAP_CAST,
-    MAP_THROW, MAP_DETAILS, MAP_INSPECT, MAP_FLOOR, MAP_SET_TRAP, MAP_IMPROVE_TRAP, MAP_ACTION_COUNT
+    MAP_THROW, MAP_DETAILS, MAP_INSPECT, MAP_FLOOR, MAP_SET_TRAP, MAP_IMPROVE_TRAP,
+    MAP_CHANGE_SHAPE, MAP_ACTION_COUNT
 };
 
 static const char *const map_action_labels[MAP_ACTION_COUNT] = {
@@ -1490,6 +1496,7 @@ static const char *const map_action_labels[MAP_ACTION_COUNT] = {
     [MAP_FIRE] = "Fire", [MAP_CAST] = "Cast", [MAP_THROW] = "Throw",
     [MAP_DETAILS] = "Details", [MAP_INSPECT] = "Inspect", [MAP_FLOOR] = "Floor",
     [MAP_SET_TRAP] = "Set trap", [MAP_IMPROVE_TRAP] = "Improve trap",
+    [MAP_CHANGE_SHAPE] = "Change shape",
 };
 
 static const cmd_code map_action_commands[MAP_ACTION_COUNT] = {
@@ -1502,6 +1509,7 @@ static const cmd_code map_action_commands[MAP_ACTION_COUNT] = {
     [MAP_ATTACK] = CMD_ALTER, [MAP_STEAL] = CMD_STEAL, [MAP_FIRE] = CMD_FIRE, [MAP_CAST] = CMD_CAST,
     [MAP_THROW] = CMD_THROW,
     [MAP_SET_TRAP] = CMD_ALTER, [MAP_IMPROVE_TRAP] = CMD_ALTER,
+    [MAP_CHANGE_SHAPE] = CMD_RESHAPE,
 };
 
 static bool map_cell_adjacent(struct loc grid)
@@ -1551,6 +1559,7 @@ static unsigned player_map_actions(struct loc grid, int object_count)
     if (player_can_study(player, false) && has_action_item(obj_can_study, pack_and_floor))
         actions |= 1U << MAP_STUDY;
     if (player->upkeep->new_specialties > 0) actions |= 1U << MAP_LEARN_SPECIALTY;
+    if (can_change_shape()) actions |= 1U << MAP_CHANGE_SHAPE;
     return actions;
 }
 
