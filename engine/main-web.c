@@ -1045,10 +1045,10 @@ EM_JS(void, send_frame, (int map, int width, int height, const wchar_t *chars,
 });
 
 EM_JS(void, send_quick_actions, (const char *spell_action,
-        bool launcher, bool can_steal, bool can_reshape, const char *repeat), {
+        bool launcher, bool can_steal, bool can_reshape, bool can_move_house, const char *repeat), {
     Module['worldQuickActions'] = {
         spell: UTF8ToString(spell_action),
-        launcher: !!launcher, canSteal: !!can_steal, canReshape: !!can_reshape,
+        launcher: !!launcher, canSteal: !!can_steal, canReshape: !!can_reshape, canMoveHouse: !!can_move_house,
         repeat: repeat ? UTF8ToString(repeat) : "",
     };
 });
@@ -1087,6 +1087,11 @@ static bool can_change_shape(void)
     return player_is_shapechanged(player) || player_has(player, PF_BEARSKIN);
 }
 
+static bool can_move_house(void)
+{
+    return player->place != player->home && level_topography(player->place) == TOP_TOWN;
+}
+
 static void publish_quick_actions(void)
 {
     bool launcher = player_can_fire(player, false);
@@ -1102,8 +1107,7 @@ static void publish_quick_actions(void)
         }
     }
 
-    send_quick_actions(spell_action, launcher, player_has(player, PF_STEAL),
-        can_change_shape(),
+    send_quick_actions(spell_action, launcher, player_has(player, PF_STEAL), can_change_shape(), can_move_house(),
         web_repeat_label());
 }
 
@@ -1481,7 +1485,7 @@ enum web_map_action {
     MAP_OPEN, MAP_CLOSE, MAP_DISARM, MAP_TUNNEL, MAP_OPEN_CHEST, MAP_DISARM_CHEST,
     MAP_STUDY, MAP_LEARN_SPECIALTY, MAP_REST, MAP_JUMP, MAP_WALK, MAP_ATTACK, MAP_STEAL, MAP_FIRE, MAP_CAST,
     MAP_THROW, MAP_DETAILS, MAP_INSPECT, MAP_FLOOR, MAP_SET_TRAP, MAP_IMPROVE_TRAP,
-    MAP_CHANGE_SHAPE, MAP_ACTION_COUNT
+    MAP_CHANGE_SHAPE, MAP_MOVE_HOUSE, MAP_ACTION_COUNT
 };
 
 static const char *const map_action_labels[MAP_ACTION_COUNT] = {
@@ -1496,7 +1500,7 @@ static const char *const map_action_labels[MAP_ACTION_COUNT] = {
     [MAP_FIRE] = "Fire", [MAP_CAST] = "Cast", [MAP_THROW] = "Throw",
     [MAP_DETAILS] = "Details", [MAP_INSPECT] = "Inspect", [MAP_FLOOR] = "Floor",
     [MAP_SET_TRAP] = "Set trap", [MAP_IMPROVE_TRAP] = "Improve trap",
-    [MAP_CHANGE_SHAPE] = "Change shape",
+    [MAP_CHANGE_SHAPE] = "Change shape", [MAP_MOVE_HOUSE] = "Move house",
 };
 
 static const cmd_code map_action_commands[MAP_ACTION_COUNT] = {
@@ -1509,7 +1513,7 @@ static const cmd_code map_action_commands[MAP_ACTION_COUNT] = {
     [MAP_ATTACK] = CMD_ALTER, [MAP_STEAL] = CMD_STEAL, [MAP_FIRE] = CMD_FIRE, [MAP_CAST] = CMD_CAST,
     [MAP_THROW] = CMD_THROW,
     [MAP_SET_TRAP] = CMD_ALTER, [MAP_IMPROVE_TRAP] = CMD_ALTER,
-    [MAP_CHANGE_SHAPE] = CMD_RESHAPE,
+    [MAP_CHANGE_SHAPE] = CMD_RESHAPE, [MAP_MOVE_HOUSE] = CMD_MOVE,
 };
 
 static bool map_cell_adjacent(struct loc grid)
@@ -1560,6 +1564,7 @@ static unsigned player_map_actions(struct loc grid, int object_count)
         actions |= 1U << MAP_STUDY;
     if (player->upkeep->new_specialties > 0) actions |= 1U << MAP_LEARN_SPECIALTY;
     if (can_change_shape()) actions |= 1U << MAP_CHANGE_SHAPE;
+    if (can_move_house()) actions |= 1U << MAP_MOVE_HOUSE;
     return actions;
 }
 

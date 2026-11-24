@@ -299,7 +299,7 @@ const visibleListCommands = [
 const extraCommands = [
     ["p", "Start exploring"], runCommand, restCommand, spellCommands.look, useCommand, repeatCommand,
     ["r", "Read a scroll"], ["q", "Quaff a potion"], ["d", "Drop an item"],
-    ["S", "View abilities"], ["M", "Full map"], ["$", "Move house"],
+    ["S", "View abilities"], ["M", "Full map"],
     ["g", "Pick up objects"], ["<", "Go up staircase or along a path"], [">", "Go down staircase or along a path"],
     ["u", "Use a staff", "Z"], ["a", "Aim a wand", "z"], ["z", "Zap a rod", "a"],
     spellCommands.study, spellCommands.browse, throwCommand, spellCommands.cast, fireCommand,
@@ -2855,6 +2855,7 @@ function renderActionsPanel() {
     } else if (openPanel === "commands") {
         commands = [...extraCommands];
         if (world?.quickActions?.canReshape) commands.push(["!", "Change shape"]);
+        if (world?.quickActions?.canMoveHouse) commands.push(["$", "Move house"]);
         if (world?.quickActions?.canSteal) commands.push(stealCommand);
         commands.push(["Enter", "All FAangband commands"]);
     }
