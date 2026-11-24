@@ -299,7 +299,7 @@ const visibleListCommands = [
 const extraCommands = [
     ["p", "Start exploring"], runCommand, restCommand, spellCommands.look, useCommand, repeatCommand,
     ["r", "Read a scroll"], ["q", "Quaff a potion"], ["d", "Drop an item"],
-    ["S", "View abilities"], ["M", "Full map"],
+    ["S", "View abilities"], ["M", "Full map"], ["#", "Show the time of day"],
     ["g", "Pick up objects"], ["<", "Go up staircase or along a path"], [">", "Go down staircase or along a path"],
     ["u", "Use a staff", "Z"], ["a", "Aim a wand", "z"], ["z", "Zap a rod", "a"],
     spellCommands.study, spellCommands.browse, throwCommand, spellCommands.cast, fireCommand,
@@ -2882,7 +2882,7 @@ function renderActionsPanel() {
     if (openPanel === "commands") {
         const grouped = [];
         for (const [title, keys] of [
-            ["Explore", ["p", ".", "R", "l", "[", "]", "<", ">", "M", "/"]],
+            ["Explore", ["p", ".", "R", "l", "[", "]", "<", ">", "M", "#", "/"]],
             ["Fight", ["m", "f", "v", "h", "*", "s"]],
             ["Items", ["U", "r", "q", "u", "a", "z", "E", "A", "F", "g", "d", "K"]],
             ["Interact", ["+", "T", "D", "o", "c"]],
