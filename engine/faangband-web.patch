@@ -3488,10 +3488,18 @@ index e8fdf53..335cc55 100644
  		else if (e.type == EVT_ESCAPE)
  		{
 diff --git a/src/ui-display.c b/src/ui-display.c
-index 8686532..03b6db5 100644
+index 8686532..0916a2e 100644
 --- a/src/ui-display.c
 +++ b/src/ui-display.c
-@@ -1046,23 +1046,16 @@ static const uint8_t mon_feeling_color[] =
+@@ -46,6 +46,7 @@
+ #include "ui-display.h"
+ #include "ui-game.h"
+ #include "ui-input.h"
++#include "ui-keymap.h"
+ #include "ui-map.h"
+ #include "ui-mon-list.h"
+ #include "ui-mon-lore.h"
+@@ -1046,23 +1047,16 @@ static const uint8_t mon_feeling_color[] =
  	COLOUR_BLUE, /* "This seems a quiet, peaceful place" */
  };
  
@@ -3518,7 +3526,7 @@ index 8686532..03b6db5 100644
  
  	/* No numerical feelings on themed levels */
  	if (player->themed_level) return 0;
-@@ -1087,16 +1080,16 @@ static size_t prt_level_feeling(int row, int col)
+@@ -1087,16 +1081,16 @@ static size_t prt_level_feeling(int row, int col)
  	 * to get a feeling. If not display as ?
  	 */
  	if (cave->feeling_squares < z_info->feeling_need) {
@@ -3541,7 +3549,7 @@ index 8686532..03b6db5 100644
  	}
  
  	/* 
-@@ -1108,19 +1101,33 @@ static size_t prt_level_feeling(int row, int col)
+@@ -1108,19 +1102,33 @@ static size_t prt_level_feeling(int row, int col)
  	 * We also reverse this so that what we show is a danger feeling.
  	 */
  	if (mon_feeling == 0)
@@ -3581,7 +3589,7 @@ index 8686532..03b6db5 100644
  
  	return new_col - col;
  }
-@@ -2389,8 +2396,12 @@ void subwindows_set_flags(uint32_t *new_flags, size_t n_subwindows)
+@@ -2389,8 +2397,12 @@ void subwindows_set_flags(uint32_t *new_flags, size_t n_subwindows)
  		if (!angband_term[j]) continue;
  
  		/* Ignore non-changes */
@@ -3596,7 +3604,7 @@ index 8686532..03b6db5 100644
  	}
  }
  
-@@ -2524,6 +2535,10 @@ static void new_level_display_update(game_event_type type,
+@@ -2524,6 +2536,10 @@ static void new_level_display_update(game_event_type type,
  	Term->offset_y = z_info->dungeon_hgt;
  	Term->offset_x = z_info->dungeon_wid;
  
@@ -3607,7 +3615,7 @@ index 8686532..03b6db5 100644
  	/* Choose panel */
  	verify_panel();
  
-@@ -2619,7 +2634,7 @@ static void see_floor_items(game_event_type type, game_event_data *data,
+@@ -2619,7 +2635,7 @@ static void see_floor_items(game_event_type type, game_event_data *data,
  	if (floor_num == 1) {
  		/* Get the object */
  		struct object *obj = floor_list[0];
@@ -3616,7 +3624,7 @@ index 8686532..03b6db5 100644
  
  		if (!can_pickup)
  			p = "have no room for";
-@@ -2636,9 +2651,17 @@ static void see_floor_items(game_event_type type, game_event_data *data,
+@@ -2636,9 +2652,17 @@ static void see_floor_items(game_event_type type, game_event_data *data,
  		}
  
  		/* Message */
@@ -3635,7 +3643,7 @@ index 8686532..03b6db5 100644
  		ui_event e;
  
  		if (!can_pickup)
-@@ -2657,6 +2680,7 @@ static void see_floor_items(game_event_type type, game_event_data *data,
+@@ -2657,6 +2681,7 @@ static void see_floor_items(game_event_type type, game_event_data *data,
  
  		/* Restore screen */
  		screen_load();
@@ -3643,6 +3651,17 @@ index 8686532..03b6db5 100644
  	}
  
  	mem_free(floor_list);
+@@ -2696,6 +2721,10 @@ static void process_character_pref_files(void)
+ 		strnfmt(buf, sizeof(buf), "%s.prf", filename);
+ 		process_pref_file(buf, true, true);
+     }
++#ifdef __EMSCRIPTEN__
++	process_pref_file(WEB_KEYMAP_FILE_ORIG, true, true);
++	process_pref_file(WEB_KEYMAP_FILE_ROGUE, true, true);
++#endif
+ }
+ 
+ 
 diff --git a/src/ui-display.h b/src/ui-display.h
 index 8bb8981..68985dd 100644
 --- a/src/ui-display.h
@@ -4154,11 +4173,97 @@ index b74cca9..09e5fbc 100644
  
  	switch (ignore_level_of(obj)) {
  	case IGNORE_GOOD:
+diff --git a/src/ui-event.c b/src/ui-event.c
+index 81ab222..8e26c63 100644
+--- a/src/ui-event.c
++++ b/src/ui-event.c
+@@ -115,11 +115,13 @@ static int dehex(char c)
+ /**
+  * Convert an encoding of a set of keypresses into actual keypresses.
+  */
+-void keypress_from_text(struct keypress *buf, size_t len, const char *str)
++bool keypress_from_text(struct keypress *buf, size_t len, const char *str)
+ {
+ 	size_t cur = 0;
+ 	uint8_t mods = 0;
++	bool valid = true;
+ 
++	if (!len) return false;
+ 	memset(buf, 0, len * sizeof *buf);
+ 
+ #define STORE(buffer, pos, mod, cod) \
+@@ -143,7 +145,10 @@ void keypress_from_text(struct keypress *buf, size_t len, const char *str)
+ 
+ 		if (*str == '\\') {
+ 			str++;
+-			if (*str == '\0') break;
++			if (*str == '\0') {
++				valid = false;
++				break;
++			}
+ 
+ 			switch (*str) {
+ 				/* Hex-mode */
+@@ -156,6 +161,7 @@ void keypress_from_text(struct keypress *buf, size_t len, const char *str)
+ 						STORE(buf, cur++, mods, v1 + v2);
+ 					} else {
+ 						/* invalids get ignored */
++						valid = false;
+ 						STORE(buf, cur++, mods, '?');
+ 					}
+ 					break;
+@@ -178,13 +184,14 @@ void keypress_from_text(struct keypress *buf, size_t len, const char *str)
+ 			const char *end;
+ 			keycode_t kc;
+ 
+-			if (*str++ == 0) return;
++			str++;
+ 
+ 			end = strchr(str, (unsigned char) ']');
+-			if (!end) return;
++			if (!end) return false;
+ 
+ 			kc = keycode_find_code(str, (size_t) (end - str));
+-			if (!kc) return;
++			if (!kc) return false;
++			if (strlen(keycode_find_desc(kc)) != (size_t)(end - str)) valid = false;
+ 
+ 			STORE(buf, cur++, mods, kc);
+ 			mods = 0;
+@@ -193,7 +200,7 @@ void keypress_from_text(struct keypress *buf, size_t len, const char *str)
+ 			/* Specify modifier for next character */
+ 			str++;
+ 			if (*str == '\0' || !strchr(str, (unsigned char) '}'))
+-				return;
++				return false;
+ 
+ 			/* analyze modifier chars */
+ 			while (*str != '}') {
+@@ -204,7 +211,7 @@ void keypress_from_text(struct keypress *buf, size_t len, const char *str)
+ 					case 'M': mods |= KC_MOD_META; break;
+ 					case 'K': mods |= KC_MOD_KEYPAD; break;
+ 					default:
+-						return;
++						return false;
+ 				}
+ 
+ 				str++;
+@@ -223,8 +230,10 @@ void keypress_from_text(struct keypress *buf, size_t len, const char *str)
+ 	}
+ 
+ 	/* Terminate */
++	valid = valid && !*str && !mods && cur < len;
+ 	cur = MIN(cur, len - 1);
+ 	buf[cur].type = EVT_NONE;
++	return valid;
+ }
+ 
+ /**
 diff --git a/src/ui-event.h b/src/ui-event.h
-index d805f11..46a59da 100644
+index d805f11..8d5dce6 100644
 --- a/src/ui-event.h
 +++ b/src/ui-event.h
-@@ -39,6 +39,27 @@ typedef enum
+@@ -39,6 +39,28 @@ typedef enum
  	EVT_SWITCH	= 0x0080,	/* Menu switch */
  
  	EVT_DISCONNECT	= 0x0100,	/* UI is disconnecting */
@@ -4182,11 +4287,12 @@ index d805f11..46a59da 100644
 +	EVT_WEB_CHARACTER = 0x8000000,
 +	EVT_WEB_MENU_PREVIEW = 0x10000000,
 +	EVT_WEB_NEW_GAME = 0x20000000,
++	EVT_WEB_QUICK_ACTION = 0x40000000,
 +#endif
  } ui_event_type;
  
  
-@@ -198,6 +219,14 @@ struct keypress {
+@@ -198,6 +220,14 @@ struct keypress {
  	uint8_t mods;
  };
  
@@ -4201,7 +4307,7 @@ index d805f11..46a59da 100644
  /**
   * Null keypress constant, for safe initializtion.
   */
-@@ -223,6 +252,9 @@ struct mouseclick {
+@@ -223,6 +253,9 @@ struct mouseclick {
   */
  typedef union {
  	ui_event_type type;
@@ -4211,6 +4317,15 @@ index d805f11..46a59da 100644
  	struct mouseclick mouse;
  	struct keypress key;
  } ui_event;
+@@ -259,7 +292,7 @@ void keypress_to_text(char *buf, size_t len, const struct keypress *src,
+ /**
+  * Convert a textual representation of keypresses into actual keypresses
+  */
+-void keypress_from_text(struct keypress *buf, size_t len, const char *str);
++bool keypress_from_text(struct keypress *buf, size_t len, const char *str);
+ 
+ /**
+  * Convert a keypress into something the user can read (not designed to be used
 diff --git a/src/ui-game.c b/src/ui-game.c
 index e0133fd..7147e3a 100644
 --- a/src/ui-game.c
@@ -5432,6 +5547,112 @@ index 1182f0e..a0f1cc2 100644
  char get_char(const char *prompt, const char *options, size_t len,
  			  char fallback);
  extern bool (*get_file)(const char *suggested_name, char *path, size_t len);
+diff --git a/src/ui-keymap.c b/src/ui-keymap.c
+index d932327..6c1aade 100644
+--- a/src/ui-keymap.c
++++ b/src/ui-keymap.c
+@@ -53,6 +53,8 @@ struct keymap {
+  */
+ static struct keymap *keymaps[KEYMAP_MODE_MAX];
+ 
++static bool keymap_remove_layer(int keymap, struct keypress trigger, int user);
++
+ 
+ /**
+  * Find a keymap, given a keypress.
+@@ -101,14 +103,22 @@ void keymap_add(int keymap, struct keypress trigger, struct keypress *actions, b
+ 	struct keymap *k = mem_zalloc(sizeof *k);
+ 	assert(keymap >= 0 && keymap < KEYMAP_MODE_MAX);
+ 
++#ifdef __EMSCRIPTEN__
++	keymap_remove_layer(keymap, trigger, user);
++#else
+ 	keymap_remove(keymap, trigger);
++#endif
+ 
+ 	k->key = trigger;
+ 	k->actions = keymap_make(actions);
+ 	k->user = user;
+ 
+-	k->next = keymaps[keymap];
+-	keymaps[keymap] = k;
++	struct keymap **insert = &keymaps[keymap];
++#ifdef __EMSCRIPTEN__
++	while (!user && *insert && (*insert)->user) insert = &(*insert)->next;
++#endif
++	k->next = *insert;
++	*insert = k;
+ 
+ 	return;
+ }
+@@ -117,14 +127,14 @@ void keymap_add(int keymap, struct keypress trigger, struct keypress *actions, b
+ /**
+  * Remove a keymap.  Return true if one was removed.
+  */
+-bool keymap_remove(int keymap, struct keypress trigger)
++static bool keymap_remove_layer(int keymap, struct keypress trigger, int user)
+ {
+ 	struct keymap *k;
+ 	struct keymap *prev = NULL;
+ 	assert(keymap >= 0 && keymap < KEYMAP_MODE_MAX);
+ 
+ 	for (k = keymaps[keymap]; k; k = k->next) {
+-		if (k->key.code == trigger.code && k->key.mods == trigger.mods) {
++		if ((user < 0 || k->user == user) && k->key.code == trigger.code && k->key.mods == trigger.mods) {
+ 			mem_free(k->actions);
+ 			if (prev)
+ 				prev->next = k->next;
+@@ -141,6 +151,24 @@ bool keymap_remove(int keymap, struct keypress trigger)
+ }
+ 
+ 
++bool keymap_remove(int keymap, struct keypress trigger)
++{
++	return keymap_remove_layer(keymap, trigger, -1);
++}
++
++#ifdef __EMSCRIPTEN__
++bool keymap_remove_custom(int keymap, struct keypress trigger)
++{
++	return keymap_remove_layer(keymap, trigger, 1);
++}
++
++void keymap_visit_custom(int mode, void (*visit)(struct keypress, const struct keypress *))
++{
++	for (struct keymap *k = keymaps[mode]; k && k->user; k = k->next)
++		visit(k->key, k->actions);
++}
++#endif
++
+ /**
+  * Forget and free all keymaps.
+  */
+@@ -180,7 +208,7 @@ void keymap_dump(ang_file *fff)
+ 		if (!k->user) continue;
+ 
+ 		/* Encode the action */
+-		keypress_to_text(buf, sizeof(buf), k->actions, false);
++		keypress_to_text(buf, sizeof(buf), k->actions, true);
+ 		file_putf(fff, "keymap-act:%s\n", buf);
+ 
+ 		/* Convert the key into a string */
+diff --git a/src/ui-keymap.h b/src/ui-keymap.h
+index 351d0bf..7e1068e 100644
+--- a/src/ui-keymap.h
++++ b/src/ui-keymap.h
+@@ -50,6 +50,12 @@ void keymap_add(int keymap, struct keypress trigger, struct keypress *actions, b
+  * Given a keypress, remove any keymap that would trigger on that key.
+  */
+ bool keymap_remove(int keymap, struct keypress trigger);
++#ifdef __EMSCRIPTEN__
++bool keymap_remove_custom(int keymap, struct keypress trigger);
++void keymap_visit_custom(int mode, void (*visit)(struct keypress, const struct keypress *));
++#define WEB_KEYMAP_FILE_ORIG "pocket-keymaps-original.prf"
++#define WEB_KEYMAP_FILE_ROGUE "pocket-keymaps-roguelike.prf"
++#endif
+ 
+ /**
+  * Free all keymaps.
 diff --git a/src/ui-knowledge.c b/src/ui-knowledge.c
 index f62aa77..3ffb04e 100644
 --- a/src/ui-knowledge.c
@@ -6877,7 +7098,7 @@ index b19545e..5c1003f 100644
  	tb = object_info(obj, OINFO_NONE);
  	object_desc(header_buf, sizeof(header_buf), obj,
 diff --git a/src/ui-options.c b/src/ui-options.c
-index 2bd8bbb..2062bf6 100644
+index 2bd8bbb..00894f5 100644
 --- a/src/ui-options.c
 +++ b/src/ui-options.c
 @@ -20,6 +20,7 @@
@@ -7500,7 +7721,7 @@ index 2bd8bbb..2062bf6 100644
  	menu_layout(&menu, &SCREEN_REGION);
  
  	screen_save();
-@@ -2032,18 +2320,30 @@ void do_cmd_options_item(const char *title, int row)
+@@ -2032,18 +2320,100 @@ void do_cmd_options_item(const char *title, int row)
   * Main menu definitions and display
   * ------------------------------------------------------------------------ */
  
@@ -7512,6 +7733,75 @@ index 2bd8bbb..2062bf6 100644
 +#endif
 +
  static struct menu *option_menu;
++#ifdef __EMSCRIPTEN__
++static bool web_save_keymaps(int mode)
++{
++	const char *file = mode == KEYMAP_MODE_ROGUE ? WEB_KEYMAP_FILE_ROGUE : WEB_KEYMAP_FILE_ORIG;
++	char dest[1024], temp[1024];
++	path_build(dest, sizeof(dest), ANGBAND_DIR_USER, file);
++	path_build(temp, sizeof(temp), ANGBAND_DIR_USER, "pocket-keymaps.tmp");
++	ang_file *out = file_open(temp, MODE_WRITE, FTYPE_TEXT);
++	if (!out) return false;
++	keymap_dump(out);
++	if (!file_close(out) || !file_move(temp, dest)) {
++		file_delete(temp);
++		return false;
++	}
++	return web_sync_profile();
++}
++
++static void web_edit_keymaps(const char *title, int row)
++{
++	const char *const actions[] = { "Create or edit a keymap", "Query a keymap", "Remove a custom keymap", "Save keymaps" };
++	int mode = OPT(player, rogue_like_commands) ? KEYMAP_MODE_ROGUE : KEYMAP_MODE_ORIG;
++	for (;;) {
++		int choice = web_choose_option(title, actions, N_ELEMENTS(actions), 0);
++		if (choice < 0) return;
++		if (choice != 3) {
++			enum web_input_mode previous = web_set_input_mode(WEB_INPUT_KEY);
++			const char *old_prompt = web_set_prompt("Press the key to map");
++			struct keypress trigger = inkey();
++			web_set_prompt(old_prompt);
++			web_set_input_mode(previous);
++			if (trigger.code == ESCAPE) continue;
++			if (trigger.code == '0' || trigger.code == '^' || trigger.code == '\\' ||
++					(trigger.code > UCHAR_MAX && !keycode_find_desc(trigger.code))) {
++				web_option_notice("Choose another key. This key cannot trigger a keymap.");
++				continue;
++			}
++			const struct keypress *existing = keymap_find(mode, trigger);
++			char buffer[512] = "";
++			if (existing) keypress_to_text(buffer, sizeof(buffer), existing, true);
++			if (choice == 1) {
++				web_option_notice(existing ? format("Keymap action: %s", buffer) : "No keymap with that trigger.");
++				continue;
++			}
++			if (choice == 2) {
++				if (!get_check("Remove this custom keymap? ")) continue;
++				if (!keymap_remove_custom(mode, trigger)) {
++					web_option_notice("No custom keymap with that trigger.");
++					continue;
++				}
++			} else {
++				struct keypress sequence[KEYMAP_ACTION_MAX + 1];
++				if (!get_string("Keymap action (up to 20 keys, e.g. m1a or [Enter]): ", buffer, sizeof(buffer))) continue;
++				bool valid = keypress_from_text(sequence, N_ELEMENTS(sequence), buffer) && sequence[0].type;
++				for (int i = 0; valid && sequence[i].type; i++) {
++					if (!sequence[i].code || (sequence[i].code > UCHAR_MAX && !keycode_find_desc(sequence[i].code)))
++						valid = false;
++				}
++				if (!valid) {
++					web_option_notice("Enter 1 to 20 valid keys.");
++					continue;
++				}
++				keymap_add(mode, trigger, sequence, true);
++			}
++		}
++		web_option_notice(web_save_keymaps(mode) ? "Keymaps saved." : "Could not save keymaps. Choose Save keymaps to retry.");
++	}
++}
++#endif
++
  static menu_action option_actions[] = 
  {
  	{ 0, 'a', "User interface options", option_toggle_menu },
@@ -7519,6 +7809,7 @@ index 2bd8bbb..2062bf6 100644
  	{ 0, 'x', "Cheat options", option_toggle_menu },
 +#ifdef __EMSCRIPTEN__
 +	{ 0, 'k', "Keyboard and mouse options", web_input_options },
++	{ 0, 'e', "Edit keymaps (advanced)", web_edit_keymaps },
 +#else
  	{ 0, 'w', "Subwindow setup", do_cmd_options_win },
 +#endif
@@ -7531,7 +7822,7 @@ index 2bd8bbb..2062bf6 100644
  	{ 0, 'm', "Set movement delay", do_cmd_lazymove_delay },
  	{ 0, 'o', "Set sidebar mode", do_cmd_sidebar_mode },
  	{ 0, 0, NULL, NULL },
-@@ -2055,9 +2355,31 @@ static menu_action option_actions[] =
+@@ -2055,9 +2425,31 @@ static menu_action option_actions[] =
  	{ 0, 'e', "Edit keymaps (advanced)", do_cmd_keymaps },
  	{ 0, 'c', "Edit colours (advanced)", do_cmd_colors },
  	{ 0, 'v', "Save visuals (advanced)", do_cmd_visuals },
@@ -7563,7 +7854,7 @@ index 2bd8bbb..2062bf6 100644
  /**
   * Display the options main menu.
   */
-@@ -2070,6 +2392,10 @@ void do_cmd_options(void)
+@@ -2070,6 +2462,10 @@ void do_cmd_options(void)
  
  		option_menu->title = "Options Menu";
  		option_menu->flags = MN_CASELESS_TAGS;
@@ -7574,7 +7865,7 @@ index 2bd8bbb..2062bf6 100644
  	}
  
  	screen_save();
-@@ -2083,8 +2409,10 @@ void do_cmd_options(void)
+@@ -2083,8 +2479,10 @@ void do_cmd_options(void)
  
  void cleanup_options(void)
  {
@@ -8004,6 +8295,19 @@ index 5f7f15c..3ab79a4 100644
 +#endif
 +
  #endif /* !UI_PLAYER_H */
+diff --git a/src/ui-prefs.h b/src/ui-prefs.h
+index 86e9069..08935bc 100644
+--- a/src/ui-prefs.h
++++ b/src/ui-prefs.h
+@@ -50,7 +50,7 @@ extern wchar_t *flavor_x_char;
+ struct prefs_data
+ {
+ 	bool bypass;
+-	struct keypress keymap_buffer[KEYMAP_ACTION_MAX];
++	struct keypress keymap_buffer[KEYMAP_ACTION_MAX + 1];
+ 	bool user;
+ 	bool loaded_window_flag[ANGBAND_TERM_MAX];
+ 	uint32_t window_flags[ANGBAND_TERM_MAX];
 diff --git a/src/ui-recall.c b/src/ui-recall.c
 index 46e3859..80bb438 100644
 --- a/src/ui-recall.c
