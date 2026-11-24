@@ -1,0 +1,3 @@
+faangband_version=2.0.1
+faangband_revision=c4ee2ce243cf0c7f6ced9004860d4fd08458d1b3
+emscripten_version=4.0.7

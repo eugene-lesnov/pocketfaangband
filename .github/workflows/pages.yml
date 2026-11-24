@@ -1,0 +1,189 @@
+name: Deploy a PocketFAangband release
+run-name: Deploy ${{ inputs.tag || github.ref_name }}
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+-*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published release tag to serve (also used for rollback)
+        required: true
+        type: string
+
+concurrency:
+  group: github-pages
+  queue: max
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    if: github.event_name == 'push' && !github.event.deleted
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      commit: ${{ steps.checkout.outputs.commit }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        id: checkout
+        with:
+          persist-credentials: false
+      - name: Read build versions
+        id: versions
+        run: |
+          source engine/versions.sh
+          printf 'faangband=%s\nemscripten=%s\n' "$faangband_revision" "$emscripten_version" >> "$GITHUB_OUTPUT"
+      - name: Check out pinned FAangband
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          repository: NickMcConnell/FAangband
+          ref: ${{ steps.versions.outputs.faangband }}
+          path: faangband-upstream
+          persist-credentials: false
+      - uses: emscripten-core/setup-emsdk@667eb33f24e84e7f362c16d8d7fff0629a73e15e
+        with:
+          version: ${{ steps.versions.outputs.emscripten }}
+          no-cache: true
+      - name: Build and verify release files
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          bash build.sh faangband-upstream dist "$RELEASE_TAG"
+          python3 deploy/release.py pages "$RUNNER_TEMP/pocketfaangband-build-preview" dist/release
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: release-files
+          path: dist/release/
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
+
+  release:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: release-files
+          path: ${{ runner.temp }}/pocketfaangband-release
+      - name: Publish GitHub Release
+        working-directory: ${{ runner.temp }}/pocketfaangband-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          BUILT_COMMIT: ${{ needs.build.outputs.commit }}
+        run: |
+          tag_commit=$(gh api "repos/$GITHUB_REPOSITORY/commits/refs/tags/$RELEASE_TAG" --jq .sha)
+          if [[ $tag_commit != "$BUILT_COMMIT" ]]; then
+            printf 'Tag %s no longer points to the built commit %s.\n' "$RELEASE_TAG" "$BUILT_COMMIT" >&2
+            exit 1
+          fi
+
+          files=(pocketfaangband-web.zip pocketfaangband-source.tar.gz SHA256SUMS)
+          prerelease=false
+          if [[ $RELEASE_TAG == *-* ]]; then
+            prerelease=true
+          fi
+          release=$(gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" |
+            jq -c --arg tag "$RELEASE_TAG" '[.[][] | select(.tag_name == $tag)] | sort_by(.draft) | first // null')
+          if [[ $release == null ]]; then
+            gh release create "$RELEASE_TAG" "${files[@]}" --repo "$GITHUB_REPOSITORY" \
+              --verify-tag --title "$RELEASE_TAG" --prerelease="$prerelease" --generate-notes \
+              --notes '[Play PocketFAangband](https://eugene-lesnov.github.io/pocketfaangband/).'
+          elif jq -e .draft <<< "$release" >/dev/null; then
+            gh release upload "$RELEASE_TAG" "${files[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease="$prerelease"
+          else
+            for file in "${files[@]}"; do
+              checksum=$(sha256sum -- "$file")
+              if ! jq -e --arg name "$file" --arg digest "sha256:${checksum%% *}" \
+                'any(.assets[]; .name == $name and .state == "uploaded" and .digest == $digest)' \
+                <<< "$release" >/dev/null; then
+                printf 'Published release %s has a missing or different asset: %s\n' "$RELEASE_TAG" "$file" >&2
+                exit 1
+              fi
+            done
+            printf 'Release %s is already published with these files.\n' "$RELEASE_TAG"
+          fi
+
+  prepare:
+    needs: release
+    if: >-
+      ${{ !cancelled() && (needs.release.result == 'success' ||
+        (github.event_name == 'workflow_dispatch' &&
+         github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      artifact: ${{ steps.artifact.outputs.name }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - name: Download and verify release files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          download_release() {
+            local tag="$1" folder
+            if [[ ! $tag =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*)?$ ]]; then
+              printf 'Invalid release tag: %s\n' "$tag" >&2
+              exit 1
+            fi
+            folder="$RUNNER_TEMP/pocketfaangband-$tag"
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir "$folder" \
+              --pattern pocketfaangband-web.zip --pattern pocketfaangband-source.tar.gz --pattern SHA256SUMS
+            downloads+=("$folder")
+          }
+
+          tags=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq \
+            '.[] | select(.draft == false and any(.assets[]; .name == "pocketfaangband-web.zip")) | .tag_name')
+          if ! grep -Fxq -- "$RELEASE_TAG" <<< "$tags"; then
+            printf 'Release must be published with a web bundle: %s\n' "$RELEASE_TAG" >&2
+            exit 1
+          fi
+          downloads=()
+          download_release "$RELEASE_TAG"
+          while IFS= read -r tag; do
+            if [[ $tag != "$RELEASE_TAG" ]]; then
+              download_release "$tag"
+            fi
+          done <<< "$tags"
+          python3 deploy/release.py pages "$RUNNER_TEMP/pocketfaangband-pages" "${downloads[@]}"
+      - name: Name the Pages artifact
+        id: artifact
+        run: printf 'name=github-pages-%s\n' "$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+      - name: Upload site files
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: ${{ runner.temp }}/pocketfaangband-pages
+
+  publish:
+    needs: prepare
+    if: ${{ !cancelled() && needs.prepare.result == 'success' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e
+        with:
+          artifact_name: ${{ needs.prepare.outputs.artifact }}

@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#171612">
+    <title>PocketFAangband</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icon-192.png" type="image/png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="terminal.js"></script>
+</head>
+<body class="game-app">
+    <main class="starting">
+        <div id="launch" class="status">
+            <p id="status" role="status">Preparing FAangband…</p>
+            <progress id="download-progress" max="100" aria-label="Game download progress" hidden></progress>
+            <button id="retry" type="button" hidden>Try again</button>
+        </div>
+        <div id="stat-method-character" hidden></div>
+        <section class="view" aria-labelledby="view-title">
+            <div class="view-bar">
+                <h2 id="view-title">PocketFAangband</h2>
+                <button id="knowledge-search-toggle" type="button" aria-label="Search Knowledge"
+                    aria-expanded="false" aria-controls="knowledge-search" hidden>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.75" stroke-linecap="round" aria-hidden="true">
+                        <g><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></g>
+                        <path d="m6 6 12 12M18 6 6 18"/>
+                    </svg>
+                </button>
+                <input id="knowledge-search" type="text" role="searchbox" inputmode="search" enterkeyhint="done"
+                    aria-label="Search Knowledge" placeholder="Search Knowledge" autocomplete="off"
+                    autocapitalize="off" spellcheck="false" hidden>
+                <div id="zoom" role="group" aria-label="Zoom" hidden>
+                    <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+                    <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+                </div>
+                <button id="map-keyboard-toggle" type="button" aria-controls="keyboard" aria-expanded="false"
+                    aria-label="Show keyboard" disabled hidden></button>
+            </div>
+            <div id="terminal-screen" class="screen" role="region" aria-label="Map overview" tabindex="0" hidden>
+                <pre id="terminal"></pre>
+            </div>
+            <section id="splash-screen" class="menu-screen" aria-labelledby="view-title" hidden>
+                <pre class="splash-map" aria-hidden="true"><span class="splash-map-art">#######·#
+      #·#
+      #·#
+    ###·##########
+    #<span class="splash-map-player">@</span><span class="splash-map-path">··········</span><span class="splash-map-stairs">&gt;</span>#
+    ###########·##
+         ######·#####
+         #··········###
+         #·············
+##########··········##·
+·······················</span></pre>
+                <div>
+                    <h3>PocketFAangband __POCKETFAANGBAND_VERSION__</h3>
+                    <p class="splash-subtitle">FAangband <span id="angband-version"></span></p>
+                    <button id="update-app" type="button">Check for updates</button>
+                    <p id="update-status" role="status"></p>
+                </div>
+                <blockquote>Beleriand in the days of the War of the Jewels</blockquote>
+                <nav aria-label="PocketFAangband links">
+                    <a href="https://nickmcconnell.github.io/FAangband/" target="_blank" rel="noopener">FAangband website</a>
+                    <a href="https://angband.live/forums/" target="_blank" rel="noopener">Forums</a>
+                    <a href="licenses.html">Source and licenses</a>
+                </nav>
+            </section>
+            <section id="victory-screen" class="menu-screen" aria-labelledby="view-title" tabindex="-1" hidden>
+                <svg width="100" height="76" viewBox="0 0 100 76" fill="none" aria-hidden="true">
+                    <path d="M50 3v17m-7-9h14M12 26l19 17 19-22 19 22 19-17-12 37H24L12 26Z"
+                        stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>
+                    <path d="M24 71h52M29 55h42" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                <div class="character-identity">
+                    <h3 id="victory-name"></h3>
+                    <p id="victory-class"></p>
+                </div>
+                <p>All Hail the Mighty Champion!</p>
+            </section>
+            <div id="map-screen" class="screen" role="region" aria-label="FAangband map" tabindex="0" hidden>
+                <div class="map-grid">
+                    <div id="map-surface">
+                        <pre id="map" aria-hidden="true"></pre>
+                        <canvas id="map-tiles" class="tile-grid" aria-hidden="true" hidden></canvas>
+                    </div>
+                </div>
+            </div>
+            <button id="discovery-arrow" type="button" aria-label="Show Explore discovery" hidden>
+                <span aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m6 3 5 5-5 5"/>
+                    </svg>
+                </span>
+            </button>
+            <button id="open-map-lists" type="button" aria-label="Visible lists" title="Visible lists"
+                aria-controls="map-lists" aria-expanded="false" disabled hidden>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+            </button>
+            <fieldset id="map-lists" aria-label="Visible lists" disabled hidden></fieldset>
+            <button id="open-menu" type="button" aria-label="Menu" aria-controls="actions-screen" disabled hidden>☰</button>
+            <div id="target-screen" class="screen" role="region" aria-label="Targeting map" tabindex="0" hidden>
+                <div class="map-grid">
+                    <pre id="target" aria-hidden="true"></pre>
+                    <canvas id="target-tiles" class="tile-grid" aria-hidden="true" hidden></canvas>
+                </div>
+            </div>
+            <div id="map-status" hidden>
+                <p>
+                    <span id="current-place"></span>
+                    <span id="level-feeling" role="img" hidden><span class="map-status-label">LF:</span><span id="feeling-danger"></span>-<span id="feeling-treasure"></span></span>
+                    <span id="speed" hidden></span>
+                </p>
+                <p>
+                    <span id="grid-light"><span class="map-status-label">Light</span> <span id="grid-light-value"></span></span>
+                    <span id="grid-terrain"></span>
+                </p>
+                <p id="map-indicators" hidden></p>
+            </div>
+            <div id="monster-health" role="img" hidden>
+                <span id="monster-name"></span>
+                <span id="monster-health-bar" aria-hidden="true"></span>
+            </div>
+            <div id="menu-screen" class="menu-screen" hidden>
+                <section id="outcome-summary" class="character-identity" aria-label="Run summary" hidden>
+                    <h3 id="outcome-name"></h3>
+                    <p id="outcome-class"></p>
+                    <p id="outcome-cause"></p>
+                    <div id="outcome-stats"></div>
+                    <time id="outcome-date"></time>
+                </section>
+            </div>
+            <p id="menu-description" class="menu-description" aria-live="polite" hidden></p>
+            <div id="birth-preview" hidden>
+                <article id="birth-card" aria-labelledby="birth-choice">
+                    <h2 id="birth-choice"></h2>
+                    <p id="birth-description"></p>
+                    <div id="birth-adjustments"></div>
+                    <div id="birth-vitals"></div>
+                    <section id="birth-abilities">
+                        <h3></h3>
+                        <p></p>
+                    </section>
+                    <section id="birth-skills">
+                        <h3>Skills</h3>
+                        <div></div>
+                    </section>
+                    <p id="birth-race-description" hidden></p>
+                </article>
+            </div>
+            <section id="birth-stats" class="menu-screen" aria-labelledby="view-title" hidden>
+                <form id="birth-name-form">
+                    <fieldset id="birth-name-fields" disabled>
+                        <label for="birth-name-value">Character name</label>
+                        <div class="birth-name-row">
+                            <input id="birth-name-value" type="text" aria-describedby="birth-name-prompt"
+                                autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="done">
+                            <button type="button" data-input="random-name" data-value="0">Random name</button>
+                        </div>
+                        <p id="birth-name-prompt">Leave blank to generate a random name.</p>
+                    </fieldset>
+                </form>
+                <div class="birth-stats-header">
+                    <div>
+                        <p id="birth-identity"></p>
+                        <strong id="birth-points" aria-live="polite"></strong>
+                    </div>
+                    <button id="reset-stats" type="button" data-key="r">Reset</button>
+                </div>
+                <fieldset id="birth-stat-rows" aria-label="Stats" disabled></fieldset>
+                <fieldset id="birth-roll-actions" class="key-row" aria-label="Dice roll" disabled hidden>
+                    <button id="previous-roll" type="button" data-key="p">Previous roll</button>
+                    <button type="button" data-key="r">Reroll</button>
+                </fieldset>
+                <section class="birth-history" aria-labelledby="birth-history-title">
+                    <div class="birth-history-heading">
+                        <h3 id="birth-history-title">Character history</h3>
+                        <button id="birth-history-edit" type="button" aria-controls="birth-history-editor"
+                            aria-expanded="false" disabled>Edit history</button>
+                    </div>
+                    <p id="birth-history-preview" aria-live="polite"></p>
+                    <fieldset id="birth-history-editor" hidden disabled>
+                        <textarea id="birth-history-value" aria-label="Edit character history" rows="4"
+                            autocapitalize="sentences"></textarea>
+                        <div class="key-row">
+                            <button id="birth-history-cancel" type="button">Cancel</button>
+                            <button id="birth-history-done" type="button">Done</button>
+                        </div>
+                    </fieldset>
+                </section>
+            </section>
+            <section id="character-screen" class="menu-screen" aria-labelledby="view-title" tabindex="-1" hidden>
+                <div class="character-identity">
+                    <h3 id="character-name"></h3>
+                    <button id="character-name-edit" type="button" aria-controls="character-name-editor"
+                        aria-keyshortcuts="C" hidden><span></span><span aria-hidden="true">✎</span></button>
+                    <form id="character-name-editor" hidden>
+                        <fieldset id="character-name-fields" disabled>
+                            <label for="character-name-value">Character name</label>
+                            <input id="character-name-value" type="text" autocomplete="off" autocapitalize="words"
+                                autocorrect="off" spellcheck="false" enterkeyhint="done" required>
+                            <div class="key-row">
+                                <button id="character-name-cancel" type="button">Cancel</button>
+                                <button id="character-name-done" type="submit">Done</button>
+                            </div>
+                        </fieldset>
+                    </form>
+                    <p id="character-class"></p>
+                </div>
+                <div id="character-summary"></div>
+                <section id="character-attributes" aria-label="Stats"></section>
+                <section id="character-conditions-section" aria-labelledby="character-conditions-title">
+                    <h3 id="character-conditions-title">Conditions</h3>
+                    <div id="character-conditions"></div>
+                </section>
+                <details class="character-detail">
+                    <summary>Combat &amp; skills</summary>
+                    <div id="character-combat"></div>
+                </details>
+                <details id="character-defenses-section" class="character-detail">
+                    <summary>Defenses</summary>
+                    <div id="character-defenses"></div>
+                </details>
+                <details class="character-detail">
+                    <summary id="character-progress-label">Progress &amp; history</summary>
+                    <div id="character-progress"></div>
+                </details>
+            </section>
+            <form id="name-screen" class="menu-screen" aria-labelledby="view-title" hidden>
+                <fieldset id="name-fields" disabled>
+                    <input id="name-value" type="text" aria-labelledby="view-title" aria-describedby="name-prompt"
+                        autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="done">
+                    <p id="name-prompt"></p>
+                    <div class="key-row">
+                        <button type="button" data-key="Escape">Cancel</button>
+                        <button type="button" data-key="*">Random name</button>
+                        <button id="confirm-name" type="submit">Done</button>
+                    </div>
+                </fieldset>
+            </form>
+            <form id="text-screen" class="menu-screen" aria-labelledby="view-title" hidden>
+                <fieldset id="text-fields" disabled>
+                    <div id="text-intro" hidden>
+                        <p id="text-title" hidden></p>
+                        <div id="inscription-help" hidden></div>
+                    </div>
+                    <label id="text-prompt" for="text-value"></label>
+                    <input id="text-value" type="text" aria-describedby="text-title" autocomplete="off" autocapitalize="off" autocorrect="off"
+                        spellcheck="false" enterkeyhint="done">
+                    <textarea id="text-history-value" rows="4" aria-describedby="text-title" autocapitalize="sentences" hidden></textarea>
+                    <div class="key-row">
+                        <button type="button" data-key="Escape">Cancel</button>
+                        <button id="confirm-text" type="submit">Done</button>
+                    </div>
+                </fieldset>
+            </form>
+            <div id="details-screen" class="menu-screen detail-text" role="region" aria-labelledby="view-title" tabindex="0" hidden></div>
+            <section id="regional-map" class="menu-screen" aria-labelledby="view-title" hidden>
+                <p id="region-player"></p>
+                <div id="region-places"></div>
+            </section>
+            <div id="unavailable-screen" class="menu-screen detail-text" role="region" aria-labelledby="view-title" hidden>This FAangband screen is unavailable on mobile.</div>
+            <section id="help-screen" class="menu-screen" aria-labelledby="view-title" tabindex="-1" hidden>
+                <div id="help-index" class="menu-rows">
+                    <button type="button" data-help-page="commands" aria-keyshortcuts="A"><kbd aria-hidden="true">a</kbd><span>Available commands</span></button>
+                    <button type="button" data-help-page="symbols" aria-keyshortcuts="B"><kbd aria-hidden="true">b</kbd><span>Available symbols</span></button>
+                    <a href="https://faangband.readthedocs.io/en/latest/" target="_blank" rel="noopener">FAangband manual</a>
+                </div>
+                <div id="help-content" hidden></div>
+            </section>
+            <section id="results-list" class="menu-screen" aria-labelledby="view-title" tabindex="0" hidden></section>
+            <section id="results-file" class="menu-screen" aria-labelledby="view-title" tabindex="-1" hidden>
+                <p id="results-file-status" role="status"></p>
+                <a id="download-result" download target="_blank" rel="noopener" hidden>Download file</a>
+            </section>
+            <p id="input-prompt" role="status" hidden></p>
+            <button id="journal" type="button" aria-label="Message recall" aria-describedby="earlier-messages latest-message"
+                aria-haspopup="dialog" aria-controls="message-dialog" hidden>
+                <span class="journal-preview">
+                    <span id="earlier-messages" hidden></span>
+                    <span id="latest-message"></span>
+                </span>
+            </button>
+            <p id="save-status" class="status" role="status" hidden></p>
+            <div id="message-pause" hidden>
+                <p id="paused-message" role="status"></p>
+                <button id="continue-message" type="button" aria-describedby="paused-message">Continue</button>
+            </div>
+        </section>
+
+        <section id="hud" aria-label="Character status" hidden>
+            <button id="vitals" type="button" aria-label="Open Character" aria-controls="character-screen">
+                <span class="vital-values">
+                    <span id="hp" class="vital-resource">
+                        <span class="vital-value"><span>HP</span><span id="hp-value"></span></span>
+                        <span class="vital-meter" aria-hidden="true"></span>
+                    </span>
+                    <span id="sp" class="vital-resource" hidden>
+                        <span class="vital-value"><span>SP</span><span id="sp-value"></span></span>
+                        <span class="vital-meter" aria-hidden="true"></span>
+                    </span>
+                    <span class="vital-value"><span>AC</span><span id="ac-value"></span></span>
+                </span>
+                <span id="hud-stats"></span>
+                <span id="condition-summary">
+                    <span id="nourishment"></span>
+                    <span id="active-conditions"></span>
+                    <span id="hidden-condition-count" hidden></span>
+                    <span id="character-indicator" aria-hidden="true">›</span>
+                </span>
+            </button>
+        </section>
+
+        <div class="controls">
+            <section id="inspection-panel" aria-labelledby="inspection-title" hidden>
+                <header class="view-bar">
+                    <h2 id="inspection-title"></h2>
+                    <button id="monster-sort" type="button" data-key="x" aria-pressed="false" hidden>Sort by exp</button>
+                </header>
+                <div id="visible-list-screen" class="menu-screen detail-text visible-list" tabindex="0" hidden></div>
+                <div id="list-details-screen" class="menu-screen detail-text" tabindex="0" hidden></div>
+            </section>
+            <section id="picker" aria-labelledby="picker-heading" hidden>
+                <header class="picker-bar">
+                    <h2 id="picker-heading" tabindex="-1"></h2>
+                    <button id="picker-toggle" type="button" aria-controls="picker-list" aria-expanded="false" disabled hidden></button>
+                </header>
+                <fieldset id="actions-screen" class="menu-screen menu-rows" disabled hidden></fieldset>
+                <div id="picker-list" class="menu-screen" hidden></div>
+                <div id="picker-list-shadow" class="scroll-shadow" aria-hidden="true" hidden></div>
+                <p id="picker-description" class="menu-description" aria-live="polite" hidden></p>
+                <div id="picker-description-shadow" class="scroll-shadow" aria-hidden="true" hidden></div>
+                <details id="trade-details" hidden>
+                    <summary>Examine</summary>
+                    <div class="detail-text"></div>
+                </details>
+                <p id="trade-quantity-label" hidden></p>
+                <p id="edit-value" aria-label="Current value" hidden></p>
+                <p id="trade-summary" aria-live="polite" hidden></p>
+            </section>
+            <fieldset id="menu-actions" aria-label="Menu actions" disabled hidden></fieldset>
+            <p id="option-save-status" role="status" hidden></p>
+            <p id="delete-save-status" class="status" role="status" hidden></p>
+            <fieldset id="quantity" class="key-panel" aria-label="Quantity" disabled hidden></fieldset>
+            <fieldset id="option-digits" class="key-panel" aria-label="Enter a number" disabled hidden></fieldset>
+            <fieldset id="rest" class="key-panel" aria-label="Rest duration" disabled hidden></fieldset>
+            <fieldset id="keyboard" class="key-panel" aria-label="FAangband on-screen keyboard" disabled hidden></fieldset>
+            <div class="game-controls-row">
+                <div class="game-controls-buttons">
+                    <fieldset id="map-cell-actions" aria-label="Cell actions" aria-describedby="latest-message" disabled hidden>
+                        <div id="map-action-buttons"></div>
+                        <p id="map-action-direction" role="status" hidden></p>
+                        <div id="map-action-footer">
+                            <button id="close-map-cell-actions" type="button">Back</button>
+                        </div>
+                    </fieldset>
+                    <fieldset id="target-actions" class="key-row" aria-label="Targeting" disabled hidden>
+                        <button id="target-mode" type="button" data-key="*">Target monster or location</button>
+                        <div id="target-types" class="key-row" role="group" aria-label="Target type" hidden>
+                            <button id="target-monster" type="button" data-key="m" aria-pressed="false">Monster</button>
+                            <button id="target-location" type="button" data-key="o" aria-pressed="false">Location</button>
+                        </div>
+                        <button id="previous-target" type="button" data-key="-" aria-label="Previous place">‹ Place</button>
+                        <button id="next-target" type="button" data-key="+" aria-label="Next place">Place ›</button>
+                        <button id="confirm-target" type="button" data-key="t">Select target</button>
+                    </fieldset>
+                    <fieldset id="play-keys" aria-label="Game controls" disabled hidden>
+                        <fieldset id="quick-actions" aria-label="Quick actions" disabled hidden>
+                            <div id="primary-actions">
+                                <button id="hero-actions" type="button" aria-controls="map-cell-actions" aria-expanded="false">Actions</button>
+                                <button type="button" data-key="i" aria-label="Display inventory listing">Pack</button>
+                            </div>
+                            <button id="use-action" type="button" data-key="U" aria-label="Use an item">Use</button>
+                            <button id="combat-action" type="button" data-key="v" aria-label="Throw an item">Throw</button>
+                            <button id="repeat-action" type="button" data-key="n" aria-label="Repeat previous command">Repeat</button>
+                        </fieldset>
+                        <button id="explore-action" type="button" data-key="p" aria-label="Start exploring" hidden>Explore</button>
+                        <button id="stop-action" type="button" hidden>Stop</button>
+                        <div id="movement-mode" role="group" aria-label="Direction pad movement">
+                            <button id="walk-mode" type="button" aria-pressed="true">Walk</button>
+                            <button id="run-mode" type="button" aria-pressed="false">Run</button>
+                        </div>
+                    </fieldset>
+                    <fieldset id="keyboard-utilities" aria-label="Keyboard controls" disabled hidden></fieldset>
+                    <fieldset id="terminal-keys" aria-label="FAangband controls" disabled>
+                        <button id="cancel-key" type="button" data-key="Escape">Back</button>
+                        <button id="nearest" type="button" data-key="'" hidden>Nearest</button>
+                        <button id="target-inspect" type="button" data-key="r" hidden>Details</button>
+                        <button id="keyboard-toggle" type="button" aria-controls="keyboard" aria-expanded="false" aria-label="Show keyboard">
+                            <svg class="keyboard-icon" width="24" height="18" viewBox="0 0 24 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+                                <rect x="1" y="2" width="22" height="14" rx="2"/>
+                                <path d="M5.5 6h1m3 0h1m3 0h1m3 0h1M5.5 9h1m3 0h1m3 0h1m3 0h1M8 12h8"/>
+                            </svg>
+                        </button>
+                        <button id="edit-history" type="button" data-key="n" hidden>Edit history</button>
+                        <button id="birth-start-over" type="button" data-key="s" hidden>Start over</button>
+                        <button id="confirm-key" type="button" data-key="Enter">Continue</button>
+                        <button id="character-dump" type="button" data-key="f" hidden>Character dump</button>
+                    </fieldset>
+                </div>
+                <fieldset id="direction-pad" class="direction-pad" aria-label="Direction pad" disabled hidden>
+                    <button type="button" data-key="7" aria-label="Up left">↖</button>
+                    <button type="button" data-key="ArrowUp" aria-label="Up">↑</button>
+                    <button type="button" data-key="9" aria-label="Up right">↗</button>
+                    <button type="button" data-key="ArrowLeft" aria-label="Left">←</button>
+                    <button id="direction-center" type="button" data-key="5" aria-label="Stand still">
+                        <span id="center-dot" aria-hidden="true"></span>
+                        <small id="center-caption" hidden>Here</small>
+                    </button>
+                    <button type="button" data-key="ArrowRight" aria-label="Right">→</button>
+                    <button type="button" data-key="1" aria-label="Down left">↙</button>
+                    <button type="button" data-key="ArrowDown" aria-label="Down">↓</button>
+                    <button type="button" data-key="3" aria-label="Down right">↘</button>
+                </fieldset>
+            </div>
+            <fieldset id="outcome-actions" class="key-row" aria-label="After this run" disabled hidden></fieldset>
+        </div>
+    </main>
+    <dialog id="message-dialog" aria-labelledby="message-dialog-title">
+        <section class="view">
+            <header class="view-bar">
+                <h2 id="message-dialog-title">Message recall</h2>
+                <button id="message-search-toggle" type="button" aria-label="Find messages"
+                    aria-expanded="false" aria-controls="message-search">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.75" stroke-linecap="round" aria-hidden="true">
+                        <g><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></g>
+                        <path d="m6 6 12 12M18 6 6 18"/>
+                    </svg>
+                </button>
+                <input id="message-search" type="text" role="searchbox" inputmode="search" enterkeyhint="done"
+                    aria-label="Find messages" placeholder="Find messages" autocomplete="off"
+                    autocapitalize="off" spellcheck="false" hidden>
+                <p id="message-search-status" role="status" hidden></p>
+            </header>
+            <ol id="messages" class="menu-screen" tabindex="0" aria-label="FAangband messages" autofocus></ol>
+        </section>
+        <form method="dialog"><button>Close</button></form>
+    </dialog>
+    <dialog id="delete-save-dialog" aria-labelledby="delete-save-title" aria-describedby="delete-save-label delete-save-warning">
+        <form method="dialog">
+            <h2 id="delete-save-title">Delete save?</h2>
+            <p id="delete-save-label"></p>
+            <p id="delete-save-warning">This permanently deletes the save.</p>
+            <div class="key-row">
+                <button type="submit" autofocus>Cancel</button>
+                <button id="confirm-delete-save" type="submit">Delete save</button>
+            </div>
+        </form>
+    </dialog>
+    <template id="menu-list-template">
+        <div class="menu-summary" hidden></div>
+        <fieldset class="menu-sections" aria-label="Item lists" hidden></fieldset>
+        <div class="menu-items">
+            <fieldset class="menu-rows" aria-label="Choices" tabindex="-1"></fieldset>
+            <p class="menu-empty" hidden>No items.</p>
+        </div>
+    </template>
+    <template id="delete-save-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 7h16m-11 0V4h6v3M6 7l1 13h10l1-13M10 10v7m4-7v7"/>
+        </svg>
+    </template>
+</body>
+</html>
