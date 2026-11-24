@@ -2185,7 +2185,7 @@ index f888d57..f9739b8 100644
  
  #endif /* !TRAP_H */
 diff --git a/src/ui-birth.c b/src/ui-birth.c
-index d57b1f3..c72bff5 100644
+index d57b1f3..dcaae79 100644
 --- a/src/ui-birth.c
 +++ b/src/ui-birth.c
 @@ -123,6 +123,10 @@ static enum birth_stage textui_birth_quickstart(void)
@@ -2217,7 +2217,33 @@ index d57b1f3..c72bff5 100644
  static const menu_iter map_menu_iter = {
  	NULL,						/* get_tag = NULL, use lowercase selections */
  	NULL,						/* no validity hook */
-@@ -305,7 +320,12 @@ static struct menu *map_menu_new(void)
+@@ -285,11 +300,15 @@ static struct menu *map_menu_new(void)
+ 		}
+ 		num_maps++;
+ 	}
+-	num_maps++;
++
++	int num_choices = num_maps;
++#ifndef __EMSCRIPTEN__
++	num_choices++;
++#endif
+ 
+ 	/* Allocate menu array */
+-	d = mem_zalloc(num_maps * sizeof(*d));
+-	for (i = 0, map = maps; i < num_maps; i++) {
++	d = mem_zalloc(num_choices * sizeof(*d));
++	for (i = 0, map = maps; i < num_choices; i++) {
+ 		if (map) {
+ 			d[i].name = map->name;
+ 			d[i].description = map->help;
+@@ -299,16 +318,21 @@ static struct menu *map_menu_new(void)
+ 			d[i].description = "Quit FAangband.";
+ 		}
+ 	}
+-	menu_setpriv(m, num_maps, d);
++	menu_setpriv(m, num_choices, d);
+ 
+ 	/* Set flags */
  	m->cmd_keys = "?";
  	m->flags = MN_CASELESS_TAGS;
  	m->selections = lower_case;
@@ -2229,8 +2255,12 @@ index d57b1f3..c72bff5 100644
 +#endif
  
  	/* Set size */
- 	loc.page_rows = num_maps + 1;
-@@ -333,11 +353,11 @@ static int map_menu_select(struct menu *m)
+-	loc.page_rows = num_maps + 1;
++	loc.page_rows = num_choices + 1;
+ 	menu_layout(m, &loc);
+ 
+ 	return m;
+@@ -333,11 +357,11 @@ static int map_menu_select(struct menu *m)
  	screen_save();
  	region_erase_bordered(&m->active);
  
@@ -2244,18 +2274,15 @@ index d57b1f3..c72bff5 100644
  }
  
  /**
-@@ -353,7 +373,11 @@ static enum birth_stage get_map_command(void)
+@@ -352,7 +376,7 @@ static enum birth_stage get_map_command(void)
+ 	if (m) {
  		int map = map_menu_select(m);
  		if (map != -1) {
- 			if (map == num_maps - 1) {
-+#ifdef __EMSCRIPTEN__
-+				web_cancel_birth();
-+#else
+-			if (map == num_maps - 1) {
++			if (map == num_maps) {
  				quit(NULL);
-+#endif
  			} else {
  				cmdq_push(CMD_CHOOSE_MAP);
- 				cmd_set_arg_choice(cmdq_peek(), "choice",
 @@ -632,6 +656,43 @@ static void class_help(int i, void *db, const region *l)
  	text_out_indent = 0;
  }

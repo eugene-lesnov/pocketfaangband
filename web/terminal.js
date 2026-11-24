@@ -1281,7 +1281,7 @@ function updateBirthControls(disabled) {
     const history = mode === "history";
     const reviewing = mode === "birth-review";
     const editingHistory = stats && !birthHistoryEditor.hidden;
-    terminalKeys.classList.toggle("birth-choice-controls", !!menu?.birth);
+    terminalKeys.classList.toggle("birth-choice-controls", !!menu?.birth || menu?.title === "Choose world map");
     terminalKeys.classList.toggle("birth-stat-controls", stats);
     terminalKeys.classList.toggle("birth-confirmation-controls", history || reviewing);
     editHistory.hidden = !history;
