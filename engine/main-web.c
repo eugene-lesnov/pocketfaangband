@@ -1570,7 +1570,8 @@ static unsigned nearby_map_actions(struct loc grid, struct object *const *object
     if (square_iscloseddoor(known, grid) && !(actions & (1U << MAP_OPEN_CHEST)))
         actions |= 1U << MAP_OPEN;
     if (square_isopendoor(known, grid)) actions |= 1U << MAP_CLOSE;
-    if (square_isdisarmabletrap(known, grid) && !(actions & (1U << MAP_DISARM_CHEST)))
+    if ((square_isdisarmabletrap(known, grid) || square_ismonstertrap(known, grid)) &&
+            !(actions & (1U << MAP_DISARM_CHEST)))
         actions |= 1U << MAP_DISARM;
     if (square_trap(known, grid) && square_isbasicmonstertrap(known, grid)) {
         actions |= 1U << MAP_IMPROVE_TRAP;
@@ -1591,7 +1592,7 @@ static unsigned player_nearby_actions(struct map_action_cell *cells, unsigned un
 {
     const term *map = angband_term[WEB_MAP_TERM];
     struct object *objects[z_info->floor_size];
-    const unsigned terrain = (1U << MAP_OPEN) | (1U << MAP_CLOSE) | (1U << MAP_DISARM);
+    const unsigned terrain = (1U << MAP_OPEN) | (1U << MAP_CLOSE);
     unsigned seen = 0, prompt = 0;
     for (int dir = DIR_SW; dir <= DIR_NE; dir++) {
         struct loc grid = next_grid(player->grid, dir);
