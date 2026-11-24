@@ -1454,6 +1454,27 @@ index b4725ac..e140451 100644
  extern void player_init(struct player *p);
  extern void player_generate(struct player *p, const struct player_race *r,
                              const struct player_class *c, bool old_history);
+diff --git a/src/player-calcs.c b/src/player-calcs.c
+index 9a92a4d..b856ea9 100644
+--- a/src/player-calcs.c
++++ b/src/player-calcs.c
+@@ -2690,9 +2690,14 @@ void calc_bonuses(struct player *p, struct player_state *state, bool known_only,
+ 		}
+ 
+ 		/* Analyze weapon for two-handed-use. */
+-		if (of_has(weapon->flags, OF_TWO_HANDED_REQ)) {
++		bitflag weapon_flags[OF_SIZE];
++		if (known_only)
++			object_flags_known(weapon, weapon_flags);
++		else
++			of_copy(weapon_flags, weapon->flags);
++		if (of_has(weapon_flags, OF_TWO_HANDED_REQ)) {
+ 			state->shield_on_back = true;
+-		} else if (of_has(weapon->flags, OF_TWO_HANDED_DES)) {
++		} else if (of_has(weapon_flags, OF_TWO_HANDED_DES)) {
+ 			int cutoff = 29 + MIN(weapon->weight / 50, 8);
+ 			if (state->stat_ind[STAT_STR] < cutoff) {
+ 				state->shield_on_back = true;
 diff --git a/src/player-path.c b/src/player-path.c
 index c356caf..08b9a6f 100644
 --- a/src/player-path.c
@@ -3658,21 +3679,22 @@ index 2b630a3..918568b 100644
  	if (out.type & EVT_SELECT) {
  		selection = m->cursor;
 diff --git a/src/ui-equip-cmp.c b/src/ui-equip-cmp.c
-index b74cca9..4dc6059 100644
+index b74cca9..09e5fbc 100644
 --- a/src/ui-equip-cmp.c
 +++ b/src/ui-equip-cmp.c
-@@ -36,6 +36,10 @@
+@@ -36,6 +36,11 @@
  #include "ui-object.h"
  #include "ui-menu.h"
  #include "ui-output.h"
 +#ifdef __EMSCRIPTEN__
 +#include "obj-util.h"
++#include "player-calcs.h"
 +#include "ui-player.h"
 +#endif
  #include "ui-term.h"
  #include "z-color.h"
  #include "z-file.h"
-@@ -65,6 +69,9 @@ struct equippable {
+@@ -65,6 +70,9 @@ struct equippable {
  	int *auxvals;
  	const struct object *obj;
  	enum equippable_source src;
@@ -3682,7 +3704,7 @@ index b74cca9..4dc6059 100644
  	enum equippable_quality qual;
  	int slot;
  	int nmlen;
-@@ -303,8 +310,399 @@ static struct indirect_sort_data sort_dat;
+@@ -303,8 +311,415 @@ static struct indirect_sort_data sort_dat;
  
  
  
@@ -3888,6 +3910,17 @@ index b74cca9..4dc6059 100644
 +		strnfmt(buf, len, "%+d", value);
 +}
 +
++static const char *web_shield_position(const struct object *weapon)
++{
++	int slot = slot_by_name(player, "weapon");
++	struct object *current = slot_object(player, slot);
++	struct player_state state = { 0 };
++	player->body.slots[slot].obj = (struct object *)weapon;
++	calc_bonuses(player, &state, true, false);
++	player->body.slots[slot].obj = current;
++	return state.shield_on_back ? "On back (reduced armor class, no shield bash)" : "In hand";
++}
++
 +static void web_compare_pair(struct web_comparison_menu *view, int first, int second, bool replacement)
 +{
 +	struct equippable *left = &the_summary->items[first], *right = &the_summary->items[second];
@@ -3918,6 +3951,11 @@ index b74cca9..4dc6059 100644
 +			strnfmt(av, sizeof(av), "%dd%d", a->dd, a->ds);
 +			strnfmt(bv, sizeof(bv), "%dd%d", b->dd, b->ds);
 +			web_compare_values("Damage dice", a->dd ? av : "None", b->dd ? bv : "None", &count);
++		}
++		if (equipped_item_by_slot_name(player, "arm") &&
++				tval_is_melee_weapon(left->obj) && tval_is_melee_weapon(right->obj)) {
++			web_compare_values("Shield", web_shield_position(left->obj),
++				web_shield_position(right->obj), &count);
 +		}
 +		web_compare_numbers("Base armor class", a->ac, b->ac, &count);
 +		if (player->obj_k->to_a)
@@ -4082,7 +4120,7 @@ index b74cca9..4dc6059 100644
  	const struct menu_display_state states[] = {
  		/* EQUIP_CMP_MENU_DONE */
  		{ "", 0, false, false },
-@@ -1591,8 +1989,11 @@ static char *set_short_name(const struct object *obj, size_t length,
+@@ -1591,8 +2006,11 @@ static char *set_short_name(const struct object *obj, size_t length,
  		nmsrc = obj->known->ego->name;
  		tail = true;
  	} else {
@@ -4096,7 +4134,7 @@ index b74cca9..4dc6059 100644
  		nmsrc = buf;
  		tail = false;
  	}
-@@ -2000,6 +2401,9 @@ struct add_obj_to_summary_closure {
+@@ -2000,6 +2418,9 @@ struct add_obj_to_summary_closure {
  	const struct player *p;
  	struct equippable_summary *summary;
  	enum equippable_source src;
@@ -4106,7 +4144,7 @@ index b74cca9..4dc6059 100644
  };
  
  
-@@ -2053,6 +2457,9 @@ static void add_obj_to_summary(const struct object *obj, void *closure)
+@@ -2053,6 +2474,9 @@ static void add_obj_to_summary(const struct object *obj, void *closure)
  
  	e->obj = obj;
  	e->src = c->src;
