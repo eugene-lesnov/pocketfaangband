@@ -1804,7 +1804,9 @@ static void describe_map_actions(int x, int y, int direction, unsigned enabled)
         }
         const char *detail = (code == MAP_EQUIP_LIGHT || code == MAP_REFILL) && player_has(player, PF_UNLIGHT) ?
             "Unlight increases spell failure on lit squares." : NULL;
-        add_map_action(x, y, direction, code, label, key, code == MAP_LEARN_SPECIALTY ? "S → l" : NULL, detail);
+        const char *key_sequence = code == MAP_LEARN_SPECIALTY ? "S → l" : NULL;
+        if (code == MAP_INSPECT) key_sequence = "I -";
+        add_map_action(x, y, direction, code, label, key, key_sequence, detail);
     }
 }
 
