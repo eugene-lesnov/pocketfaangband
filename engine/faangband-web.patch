@@ -8203,7 +8203,7 @@ index 68f66c6..8039486 100644
  void predict_score(bool allow_scrolling);
  
 diff --git a/src/ui-spell.c b/src/ui-spell.c
-index 2a169aa..d6b344a 100644
+index 2a169aa..a70b45e 100644
 --- a/src/ui-spell.c
 +++ b/src/ui-spell.c
 @@ -27,6 +27,7 @@
@@ -8282,18 +8282,26 @@ index 2a169aa..d6b344a 100644
  	}
  
  	/* Dump the spell --(-- */
-@@ -129,6 +140,10 @@ static bool spell_menu_handler(struct menu *m, const ui_event *e, int oid)
+@@ -129,10 +140,18 @@ static bool spell_menu_handler(struct menu *m, const ui_event *e, int oid)
  	struct spell_menu_data *d = menu_priv(m);
  
  	if (e->type == EVT_SELECT) {
 +#ifdef __EMSCRIPTEN__
-+		if (d->is_valid == spell_okay_to_study && d->show_description)
++		if (!d->browse && d->show_description)
 +			return true;
 +#endif
  		d->selected_spell = d->spells[oid];
  		return d->browse ? true : false;
  	}
-@@ -141,14 +156,60 @@ static bool spell_menu_handler(struct menu *m, const ui_event *e, int oid)
+ 	else if (e->type == EVT_KBRD) {
++#ifdef __EMSCRIPTEN__
++		if (e->key.code == '!' && !d->browse && d->show_description && spell_menu_valid(m, oid))
++			d->selected_spell = d->spells[oid];
++#endif
+ 		if (e->key.code == '?') {
+ 			d->show_description = !d->show_description;
+ 		}
+@@ -141,14 +160,60 @@ static bool spell_menu_handler(struct menu *m, const ui_event *e, int oid)
  	return false;
  }
  
@@ -8356,7 +8364,7 @@ index 2a169aa..d6b344a 100644
  
  	if (d->show_description) {
  		/* Redirect output to the screen */
-@@ -158,47 +219,8 @@ static void spell_menu_browser(int oid, void *data, const region *loc)
+@@ -158,47 +223,8 @@ static void spell_menu_browser(int oid, void *data, const region *loc)
  		text_out_pad = 1;
  
  		Term_gotoxy(loc->col, loc->row + loc->page_rows);
@@ -8406,7 +8414,7 @@ index 2a169aa..d6b344a 100644
  		text_out("\n\n");
  
  		/* XXX */
-@@ -206,6 +228,7 @@ static void spell_menu_browser(int oid, void *data, const region *loc)
+@@ -206,6 +232,7 @@ static void spell_menu_browser(int oid, void *data, const region *loc)
  		text_out_indent = 0;
  	}
  }
@@ -8414,7 +8422,7 @@ index 2a169aa..d6b344a 100644
  
  static const menu_iter spell_menu_iter = {
  	NULL,	/* get_tag = NULL, just use lowercase selections */
-@@ -215,6 +238,55 @@ static const menu_iter spell_menu_iter = {
+@@ -215,6 +242,78 @@ static const menu_iter spell_menu_iter = {
  	NULL	/* no resize hook */
  };
  
@@ -8426,14 +8434,36 @@ index 2a169aa..d6b344a 100644
 +	textblock_append(web_spell_text, "%s", text);
 +}
 +
++static void web_spell_cost(char *detail, size_t len, const struct class_spell *spell)
++{
++	int low = 0, high = 0;
++	for (struct effect *e = spell->effect; e; e = effect_next(e)) {
++		if (e->index == EF_DAMAGE && e->dice) {
++			low += dice_evaluate(e->dice, 0, MINIMISE, NULL);
++			high += dice_evaluate(e->dice, 0, MAXIMISE, NULL);
++		}
++	}
++	if (high > 0) {
++		if (low == high)
++			my_strcat(detail, format(" · Self-damage %d HP", high), len);
++		else
++			my_strcat(detail, format(" · Self-damage %d–%d HP", low, high), len);
++	}
++}
++
 +static void web_render_spell_choices(struct menu *m)
 +{
 +	struct spell_menu_data *d = menu_priv(m);
-+	bool casting = d->is_valid == spell_okay_to_cast;
++	bool select = !d->browse && d->show_description && spell_menu_valid(m, m->cursor);
 +
 +	web_set_menu(m, m->cursor, NULL);
 +	web_set_menu_title(d->web_title);
-+	if (!casting) web_menu_action('?', d->show_description ? "Hide description" : "Show description");
++	web_menu_action('?', d->show_description ? "Hide description" : "Show description");
++	m->switch_keys = select ? "!" : NULL;
++	if (select) {
++		const char *verb = d->is_valid == spell_okay_to_cast ? "Cast" : "Study";
++		web_menu_action('!', format("%s %s", verb, spell_by_index(player, d->spells[m->cursor])->name));
++	}
 +	for (int i = 0; i < d->n_spells; ++i) {
 +		int index = d->spells[i];
 +		const struct class_spell *spell = spell_by_index(player, index);
@@ -8448,11 +8478,12 @@ index 2a169aa..d6b344a 100644
 +			status = spell_menu_info(index, spell, info, sizeof(info), &attr);
 +			strnfmt(detail, sizeof(detail), "Lv %d · Mana %d · Fail %d%%",
 +				spell->slevel, spell->smana, spell_chance(index));
++			web_spell_cost(detail, sizeof(detail), spell);
 +		}
 +		web_add_menu_row(i, legible ? spell->name : "(illegible)",
 +			legible ? detail : NULL, NULL, m->selections[i], valid);
 +		web_set_menu_spell(status, attr);
-+		if (!casting && d->show_description && i == m->cursor &&
++		if (d->show_description && i == m->cursor &&
 +				spell_okay_to_browse(player, index)) {
 +			void (*previous_hook)(uint8_t, const char *) = text_out_hook;
 +			web_spell_text = textblock_new();
@@ -8470,7 +8501,7 @@ index 2a169aa..d6b344a 100644
  /**
   * Create and initialise a spell menu, given an object and a validity hook
   */
-@@ -249,7 +321,13 @@ static struct menu *spell_menu_new(const struct object *obj,
+@@ -249,7 +348,13 @@ static struct menu *spell_menu_new(const struct object *obj,
  	m->header = "Name                             Lv Mana Fail Info";
  	m->flags = MN_CASELESS_TAGS | MN_KEYMAP_ESC;
  	m->selections = all_letters_nohjkl;
@@ -8484,7 +8515,7 @@ index 2a169aa..d6b344a 100644
  	m->cmd_keys = "?";
  
  	/* Set size */
-@@ -287,6 +365,10 @@ static int spell_menu_select(struct menu *m, const char *noun, const char *verb)
+@@ -287,6 +392,10 @@ static int spell_menu_select(struct menu *m, const char *noun, const char *verb)
  	my_strcap(buf);
  	prt(buf, 0, 0);
  
@@ -8495,7 +8526,7 @@ index 2a169aa..d6b344a 100644
  	menu_select(m, 0, true);
  	screen_load();
  
-@@ -306,6 +388,10 @@ static void spell_menu_browse(struct menu *m, const char *noun)
+@@ -306,6 +415,10 @@ static void spell_menu_browse(struct menu *m, const char *noun)
  	prt(format("Browsing %ss. ('?' to toggle description)", noun), 0, 0);
  
  	d->browse = true;
