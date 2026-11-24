@@ -1718,7 +1718,8 @@ static unsigned map_actions(struct loc grid, struct monster *mon, struct object 
 {
     struct chunk *known = player->cave;
     unsigned actions = 0;
-    if (player->timed[TMD_COMMAND]) return mon ? 1U << MAP_DETAILS : 0;
+    if (player->timed[TMD_COMMAND])
+        return mon && !player->timed[TMD_IMAGE] ? 1U << MAP_DETAILS : 0;
     if (loc_eq(grid, player->grid)) {
         actions = player_map_actions(grid, object_count);
         if (!player->timed[TMD_IMAGE])
@@ -1887,7 +1888,7 @@ bool web_map_cell(int x, int y, int gesture)
     struct chunk *known = player->cave;
     if (player->timed[TMD_COMMAND]) {
         struct monster *controlled = get_commanded_monster();
-        if (direct_move && controlled && monster_is_obvious(controlled) &&
+        if (direct_move && !player->timed[TMD_IMAGE] && controlled && monster_is_obvious(controlled) &&
                 ABS(grid.x - controlled->grid.x) <= 1 && ABS(grid.y - controlled->grid.y) <= 1) {
             int dir = loc_eq(grid, controlled->grid) ? DIR_TARGET : motion_dir(controlled->grid, grid);
             return web_quick_action('0' + dir);

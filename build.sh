@@ -5,7 +5,7 @@ project_dir=$(cd -- "$(dirname -- "$0")" && pwd)
 output_dir=${2:-"$project_dir/dist"}
 [[ $output_dir = /* ]] || output_dir="$PWD/$output_dir"
 source "$project_dir/engine/versions.sh"
-faangband_patch_date=2026-11-24
+faangband_patch_date=2026-11-25
 
 pocketfaangband_version=${3:-dev}
 if [[ -z ${3:-} && -f "$project_dir/VERSION" ]]; then
