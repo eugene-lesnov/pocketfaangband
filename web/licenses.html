@@ -4,21 +4,30 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>PocketFAangband source and licenses</title>
+    <meta name="theme-color" content="#101c29">
+    <link rel="icon" href="icon-192.png?v=mountain" type="image/png" sizes="192x192">
+    <link rel="icon" href="icon.svg?v=mountain" type="image/svg+xml" sizes="any">
+    <link rel="apple-touch-icon" href="icon-192.png?v=mountain">
+    <script src="theme.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <main>
         <h1>Source and licenses</h1>
         <section class="status">
-            <p>PocketFAangband __POCKETFAANGBAND_VERSION__</p>
+            <p>PocketFAangband __POCKETFAANGBAND_VERSION__ is distributed under the <a href="gpl-2.0.txt">GNU General Public License, version 2 only</a>.</p>
             <p><a href="sources/__SOURCE_ARCHIVE__" download>Download the source for this version</a> (requires a connection).</p>
-            <p>PocketFAangband is an unofficial mobile port of FAangband based on PocketAngband.</p>
-            <p>PocketFAangband and the modified FAangband engine are distributed under the <a href="gpl-2.0.txt">GNU General Public License, version 2</a>, without warranty. Copyright © 2026 PocketAngband and PocketFAangband contributors. The engine and game data retain the FAangband and Angband contributors’ notices.</p>
         </section>
         <section class="status">
-            <p>The <a href="faangband-copying.txt">FAangband copying notice</a> includes the terms for Original Tiles and the separate permission for Adam Bolt’s 16×16 graphics.</p>
-            <p>David Gervais’ 32×32 graphics come from <a href="https://github.com/NickMcConnell/FAangband/tree/c4ee2ce243cf0c7f6ced9004860d4fd08458d1b3/lib/tiles">FAangband 2.0.1</a> and are distributed unchanged under <a href="https://creativecommons.org/licenses/by/3.0/">Creative Commons Attribution 3.0</a>.</p>
-            <p>Runtime notices: <a href="emscripten-license.txt">Emscripten</a> (<a href="emscripten-authors.txt">authors</a>), <a href="musl-copyright.txt">musl</a>, and <a href="compiler-rt-license.txt">LLVM compiler-rt</a>. Doug Lea’s allocator notice is in the source archive.</p>
+            <ul>
+                <li>The engine and game data come from <a href="https://github.com/NickMcConnell/FAangband/tree/c4ee2ce243cf0c7f6ced9004860d4fd08458d1b3">FAangband 2.0.1</a>.</li>
+                <li>The browser interface, engine adapter, and build scripts come from <a href="https://github.com/eugene-lesnov/pocketangband/tree/68da97d">PocketAngband</a>.</li>
+                <li>FAangband supplies the Original 8×8 tiles and Adam Bolt’s 16×16 tiles. <a href="faangband-copying.txt">Graphics credits and permissions</a>.</li>
+                <li>David Gervais’ 32×32 tiles are included unchanged under <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>.</li>
+                <li>The game is built with Emscripten 4.0.7. <a href="emscripten-license.txt">Emscripten license</a>,
+                    <a href="emscripten-authors.txt">authors</a>, <a href="musl-copyright.txt">musl notice</a>, and <a href="compiler-rt-license.txt">LLVM compiler-rt license</a>.</li>
+                <li><a href="https://github.com/pocketzot/pocketzot">PocketZot</a> inspired the mobile controls and offline downloads.</li>
+            </ul>
         </section>
         <a href="./">Return to PocketFAangband</a>
     </main>

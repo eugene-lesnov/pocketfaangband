@@ -34,7 +34,7 @@ mkdir -p "$source_dir"/{faangband,deploy,engine,web,emscripten}
 cp "$project_dir"/{build.sh,serve.py,COPYING,ATTRIBUTION.md} "$source_dir/"
 cp "$project_dir"/deploy/release.py "$source_dir/deploy/"
 cp "$project_dir"/engine/{faangband-web.patch,main-web.c,versions.sh} "$source_dir/engine/"
-cp "$project_dir"/web/{index.html,licenses.html,manifest.webmanifest,icon-192.png,icon-512.png,style.css,terminal.js,inscriptions.js,frame-renderer.js,explore-camera.js,tiles.js,offline.js,engine-worker.js,sw.js} "$source_dir/web/"
+cp "$project_dir"/web/{index.html,licenses.html,manifest.webmanifest,icon.svg,icon-192.png,icon-512.png,style.css,theme.js,terminal.js,inscriptions.js,frame-renderer.js,explore-camera.js,tiles.js,offline.js,engine-worker.js,sw.js} "$source_dir/web/"
 printf '%s\n' "$pocketfaangband_version" > "$source_dir/VERSION"
 
 if [[ -z ${1:-} && -f "$project_dir/faangband/docs/copying.rst" ]]; then

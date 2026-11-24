@@ -49,7 +49,7 @@
 #include "z-type.h"
 #include <emscripten.h>
 
-enum { RUN_STEP_DELAY_MS = 80 };
+enum { RUN_STEP_DELAY_MS = 80, EXPLORE_STEP_DELAY_MS = 60 };
 
 static enum web_input_mode input_mode;
 static const char *input_prompt;
@@ -412,24 +412,8 @@ static const void *list_block;
 
 static void web_text_color(char *buffer, size_t size, int attr)
 {
-    static const uint8_t tint[MAX_COLORS] = {
-        [COLOUR_SLATE] = 48,
-        [COLOUR_RED] = 60,
-        [COLOUR_GREEN] = 50,
-        [COLOUR_UMBER] = 60,
-        [COLOUR_L_DARK] = 60,
-        [COLOUR_L_PURPLE] = 40,
-        [COLOUR_L_RED] = 55,
-        [COLOUR_L_UMBER] = 30,
-        [COLOUR_VIOLET] = 50,
-    };
     const uint8_t *color = angband_color_table[attr];
-    unsigned int rgb[3];
-    for (int i = 0; i < 3; ++i) {
-        int value = color[i + 1];
-        rgb[i] = value + ((255 - value) * tint[attr] + 50) / 100;
-    }
-    strnfmt(buffer, size, "#%02x%02x%02x", rgb[0], rgb[1], rgb[2]);
+    strnfmt(buffer, size, "#%02x%02x%02x", color[1], color[2], color[3]);
 }
 
 EM_JS(void, start_list, (int graphics_mode, const uint8_t *colors, int count), {
@@ -925,9 +909,13 @@ EM_JS(void, web_menu_action, (int key, const char *label), {
     Module['inputMenu'].actions.push({ key, label: UTF8ToString(label) });
 });
 
-void web_add_option_toggle(int row, const char *label, bool checked, bool enabled)
+EM_JS(bool, web_has_mouse, (void), {
+    return !!Module['mouseAvailable'];
+});
+
+void web_add_option_toggle(int row, const char *label, const char *detail, bool checked, bool enabled)
 {
-    web_add_menu_row(row, label, NULL, checked ? "On" : "Off", 0, enabled);
+    web_add_menu_row(row, label, detail, checked ? "On" : "Off", 0, enabled);
     EM_ASM({
         Module['inputMenu'].rows.at(-1).checked = !!$0;
     }, checked);
@@ -1057,10 +1045,10 @@ EM_JS(void, send_frame, (int map, int width, int height, const wchar_t *chars,
 });
 
 EM_JS(void, send_quick_actions, (const char *spell_action,
-        bool launcher, bool can_steal, bool can_reshape, bool can_explore, const char *repeat), {
+        bool launcher, bool can_steal, bool can_reshape, const char *repeat), {
     Module['worldQuickActions'] = {
         spell: UTF8ToString(spell_action),
-        launcher: !!launcher, canSteal: !!can_steal, canReshape: !!can_reshape, canExplore: !!can_explore,
+        launcher: !!launcher, canSteal: !!can_steal, canReshape: !!can_reshape,
         repeat: repeat ? UTF8ToString(repeat) : "",
     };
 });
@@ -1111,7 +1099,7 @@ static void publish_quick_actions(void)
 
     send_quick_actions(spell_action, launcher, player_has(player, PF_STEAL),
         player_is_shapechanged(player) || player_has(player, PF_BEARSKIN),
-        OPT(player, autoexplore_commands), web_repeat_label());
+        web_repeat_label());
 }
 
 enum { LOW_LIGHT_FUEL = 50 };
@@ -1158,13 +1146,12 @@ EMSCRIPTEN_KEEPALIVE void web_message_recall(unsigned int request)
 }
 
 EM_JS(void, set_world_map_status, (int light, const char *terrain, const char *danger,
-        const char *treasure, const uint8_t *danger_color, const uint8_t *treasure_color), {
-    const color = (ptr) => `rgb(${HEAPU8[ptr + 1]} ${HEAPU8[ptr + 2]} ${HEAPU8[ptr + 3]})`;
+        const char *treasure, const char *danger_color, const char *treasure_color), {
     Module['worldMapStatus'] = {
         light, terrain: UTF8ToString(terrain), indicators: [],
         feeling: danger ? {
             danger: UTF8ToString(danger), treasure: UTF8ToString(treasure),
-            dangerColor: color(danger_color), treasureColor: color(treasure_color),
+            dangerColor: UTF8ToString(danger_color), treasureColor: UTF8ToString(treasure_color),
         } : null,
     };
 });
@@ -1194,13 +1181,17 @@ static void publish_map_status(void)
     struct level_feeling_display feeling;
     bool show_feeling = get_level_feeling(&feeling);
 
+    char danger_color[8], treasure_color[8];
+    if (show_feeling) {
+        web_text_color(danger_color, sizeof(danger_color), feeling.danger_attr);
+        web_text_color(treasure_color, sizeof(treasure_color), feeling.treasure_attr);
+    }
     my_strcpy(terrain, (trap && !square_isinvis(cave, grid)) ?
         trap->kind->name : square_feat(cave, grid)->name, sizeof(terrain));
     my_strcap(terrain);
     set_world_map_status(square_light(cave, grid), terrain,
         show_feeling ? feeling.danger : NULL, show_feeling ? feeling.treasure : NULL,
-        show_feeling ? angband_color_table[feeling.danger_attr] : NULL,
-        show_feeling ? angband_color_table[feeling.treasure_attr] : NULL);
+        danger_color, treasure_color);
 
     int moves = player->state.num_moves;
     if (player_is_shapechanged(player)) {
@@ -1245,10 +1236,10 @@ EM_JS(void, add_world_stat, (const char *label, const char *value, bool reduced,
     });
 });
 
-EM_JS(void, set_world_monster_health, (const char *name, int segments, const uint8_t *color), {
+EM_JS(void, set_world_monster_health, (const char *name, int segments, const char *color), {
     Module['worldMonsterHealth'] = {
         name: name ? UTF8ToString(name) : null, segments,
-        color: color ? `rgb(${HEAPU8[color + 1]} ${HEAPU8[color + 2]} ${HEAPU8[color + 3]})` : null,
+        color: color ? UTF8ToString(color) : null,
     };
 });
 
@@ -1263,7 +1254,9 @@ static void publish_monster_health(void)
     }
     int pct = 100L * mon->hp / mon->maxhp;
     int segments = (pct < 10) ? 1 : (pct < 90) ? pct / 10 + 1 : 10;
-    set_world_monster_health(mon->race->name, segments, angband_color_table[monster_health_attr()]);
+    char color[8];
+    web_text_color(color, sizeof(color), monster_health_attr());
+    set_world_monster_health(mon->race->name, segments, color);
 }
 
 static void publish_stats(bool commands)
@@ -1855,7 +1848,7 @@ void web_poll_interrupt(void)
             Term_activate(previous);
         }
         last_interrupt_poll = now;
-        emscripten_sleep(RUN_STEP_DELAY_MS);
+        emscripten_sleep(exploring ? EXPLORE_STEP_DELAY_MS : RUN_STEP_DELAY_MS);
     } else if (now - last_interrupt_poll >= 16) {
         last_interrupt_poll = now;
         emscripten_sleep(1);
@@ -1878,6 +1871,7 @@ EM_JS(int, take_input, (int *code, int *x, int *y, int row, int preview, int sec
         int text_event, int delete_event, int run_direction, int character_event, int new_game), {
     const event = Module['takeInput']();
     if (!event) return 0;
+    if (event.mouseAvailable !== undefined) Module['mouseAvailable'] = event.mouseAvailable;
     HEAP32[code >>> 2] = event.code ?? 0;
     if (event.type === "store-action") {
         HEAP32[x >>> 2] = event.row ?? 0;

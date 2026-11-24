@@ -60,6 +60,9 @@ export function renderTileMap(canvas, tiles, frame, grid, colors) {
     canvas.style.setProperty("--rows", rows);
 
     const context = canvas.getContext("2d");
+    const style = getComputedStyle(canvas);
+    const cursorColor = style.getPropertyValue("--game-yellow");
+    const discoveryColor = style.getPropertyValue("--game-light-blue");
     const cursorWidth = size / 16;
     context.clearRect(0, 0, width, height);
     context.font = `${size * 0.75}px monospace`;
@@ -85,11 +88,13 @@ export function renderTileMap(canvas, tiles, frame, grid, colors) {
                 }
             }
             if (frame.highlighted?.has(index)) {
-                context.fillStyle = "#ffdb764d";
+                context.fillStyle = cursorColor;
+                context.globalAlpha = 0.3;
                 context.fillRect(left, top, size, size);
+                context.globalAlpha = 1;
             }
             if (index === frame.cursor || frame.discoveries?.has(index)) {
-                context.strokeStyle = index === frame.cursor ? "#ffdb76" : "#79e0da";
+                context.strokeStyle = index === frame.cursor ? cursorColor : discoveryColor;
                 context.strokeRect(left + cursorWidth / 2, top + cursorWidth / 2, size - cursorWidth, size - cursorWidth);
             }
         }

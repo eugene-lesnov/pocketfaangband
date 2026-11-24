@@ -3,11 +3,13 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#171612">
+    <meta name="theme-color" content="#101c29">
     <title>PocketFAangband</title>
     <link rel="manifest" href="manifest.webmanifest">
-    <link rel="icon" href="icon-192.png" type="image/png">
-    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" href="icon-192.png?v=mountain" type="image/png" sizes="192x192">
+    <link rel="icon" href="icon.svg?v=mountain" type="image/svg+xml" sizes="any">
+    <link rel="apple-touch-icon" href="icon-192.png?v=mountain">
+    <script src="theme.js"></script>
     <link rel="stylesheet" href="style.css">
     <script type="module" src="terminal.js"></script>
 </head>
@@ -129,6 +131,7 @@
                 <span id="monster-health-bar" aria-hidden="true"></span>
             </div>
             <div id="menu-screen" class="menu-screen" hidden>
+                <p id="delete-save-error" role="alert"></p>
                 <section id="outcome-summary" class="character-identity" aria-label="Run summary" hidden>
                     <h3 id="outcome-name"></h3>
                     <p id="outcome-class"></p>
@@ -347,7 +350,6 @@
             </section>
             <fieldset id="menu-actions" aria-label="Menu actions" disabled hidden></fieldset>
             <p id="option-save-status" role="status" hidden></p>
-            <p id="delete-save-status" class="status" role="status" hidden></p>
             <fieldset id="quantity" class="key-panel" aria-label="Quantity" disabled hidden></fieldset>
             <fieldset id="option-digits" class="key-panel" aria-label="Enter a number" disabled hidden></fieldset>
             <fieldset id="rest" class="key-panel" aria-label="Rest duration" disabled hidden></fieldset>
@@ -374,14 +376,14 @@
                     <fieldset id="play-keys" aria-label="Game controls" disabled hidden>
                         <fieldset id="quick-actions" aria-label="Quick actions" disabled hidden>
                             <div id="primary-actions">
+                                <button id="use-action" type="button" data-key="U" aria-label="Use an item">Use</button>
+                                <button id="pack-action" type="button" data-key="i" aria-keyshortcuts="i" aria-label="Display inventory listing">Pack</button>
                                 <button id="hero-actions" type="button" aria-controls="map-cell-actions" aria-expanded="false">Actions</button>
-                                <button type="button" data-key="i" aria-label="Display inventory listing">Pack</button>
                             </div>
-                            <button id="use-action" type="button" data-key="U" aria-label="Use an item">Use</button>
-                            <button id="combat-action" type="button" data-key="v" aria-label="Throw an item">Throw</button>
                             <button id="repeat-action" type="button" data-key="n" aria-label="Repeat previous command">Repeat</button>
+                            <button id="combat-action" type="button" data-key="v" aria-label="Throw an item">Throw</button>
                         </fieldset>
-                        <button id="explore-action" type="button" data-key="p" aria-label="Start exploring" hidden>Explore</button>
+                        <button id="explore-action" type="button" data-key="p" aria-label="Start exploring">Explore</button>
                         <button id="stop-action" type="button" hidden>Stop</button>
                         <div id="movement-mode" role="group" aria-label="Direction pad movement">
                             <button id="walk-mode" type="button" aria-pressed="true">Walk</button>
@@ -455,6 +457,7 @@
             </div>
         </form>
     </dialog>
+    <p id="delete-save-status" role="status"></p>
     <template id="menu-list-template">
         <div class="menu-summary" hidden></div>
         <fieldset class="menu-sections" aria-label="Item lists" hidden></fieldset>

@@ -1,12 +1,12 @@
-# PocketFAangband source and licenses
+# Sources and licenses
 
-PocketFAangband's original code, icons, and changes to FAangband are distributed under the GNU General Public License, version 2 only. See [COPYING](COPYING). The browser interface, adapter, build tooling, and icons are derived from [PocketAngband](https://github.com/eugene-lesnov/pocketangband/tree/5a89b1a). Copyright (C) 2026 PocketAngband and PocketFAangband contributors.
+PocketFAangband is distributed under the GNU General Public License, version 2 only. [COPYING](COPYING)
 
-- **FAangband engine and game data:** from the FAangband 2.0.1 revision `c4ee2ce24`. PocketFAangband distributes its modified build under GPL version 2 and retains FAangband's original copyright notices and dual-license terms for the upstream work. See `faangband/docs/copying.rst` in the source archive or `faangband-copying.txt` in the app. [FAangband 2.0.1](https://github.com/NickMcConnell/FAangband/tree/c4ee2ce243cf0c7f6ced9004860d4fd08458d1b3)
-- **Original Tiles (8×8):** the atlas and mappings come from `lib/tiles/old` at the same revision and are distributed with FAangband's original notices.
-- **Adam Bolt's 16×16 tiles:** the atlas and mappings come from `lib/tiles/adam-bolt` at the same revision. The atlas keeps the separate permission in FAangband's copying notice.
-- **David Gervais' 32×32 tiles:** the atlas and mappings come from `lib/tiles/gervais` at the same revision. The atlas by David Gervais is distributed unchanged under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), as stated in FAangband's copying notice.
-- **Emscripten 4.0.7:** the JavaScript runtime and C library glue come from the [Emscripten SDK](https://github.com/emscripten-core/emscripten/tree/4.0.7). The source archive contains the SDK's runtime sources and notices, including Emscripten's MIT/NCSA terms, musl's copyright notice, compiler-rt's Apache-2.0 license with LLVM exceptions, and Doug Lea's public-domain allocator notice in `dlmalloc.c`.
-- **PocketZot:** used as a design reference for the mobile and offline flows. The package does not incorporate PocketZot code or assets.
+- The engine and game data come from FAangband 2.0.1. [FAangband source](https://github.com/NickMcConnell/FAangband/tree/c4ee2ce243cf0c7f6ced9004860d4fd08458d1b3)
+- PocketFAangband adapts PocketAngband’s browser interface, engine adapter, and build scripts. [PocketAngband source](https://github.com/eugene-lesnov/pocketangband/tree/68da97d)
+- FAangband supplies the Original 8×8 tiles and Adam Bolt’s 16×16 tiles. Adam Bolt permits use and redistribution with or without changes. [FAangband license and graphics credits](https://github.com/NickMcConnell/FAangband/blob/c4ee2ce243cf0c7f6ced9004860d4fd08458d1b3/docs/copying.rst)
+- David Gervais’ 32×32 tiles are included unchanged. [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)
+- The WebAssembly build uses Emscripten 4.0.7. The release includes its runtime license notices. [Emscripten SDK](https://github.com/emscripten-core/emscripten/tree/4.0.7)
+- PocketZot inspired the mobile controls and offline download flow. [PocketZot source](https://github.com/pocketzot/pocketzot)
 
-The archive includes the FAangband sources as built, with the PocketFAangband changes applied, plus the port, the web app, the runtime sources and the build and packaging scripts. With [Emscripten 4.0.7 active](https://emscripten.org/docs/tools_reference/emsdk.html#how-do-i-install-a-specific-version), run `bash build.sh` from the extracted `pocketfaangband-source` directory. The archive contains the FAangband inputs, so a separate checkout is unnecessary. The build uses the active SDK's runtime; to change it, apply your edits to that SDK and rebuild the affected libraries. Serve the resulting `dist/` with `python3 serve.py`.
+To rebuild from the source archive, activate Emscripten 4.0.7 and run `bash build.sh` in the extracted directory. Start the game with `python3 serve.py`.

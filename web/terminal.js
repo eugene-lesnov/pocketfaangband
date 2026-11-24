@@ -1,4 +1,4 @@
-import { renderDescription, renderFrame, textColors } from "./frame-renderer.js";
+import { gameTextColor, renderDescription, renderFrame, styleGlyph, textColors } from "./frame-renderer.js";
 import { ExploreCamera } from "./explore-camera.js";
 import { renderInscriptionHelp } from "./inscriptions.js";
 import { applyOfflineUpdate, checkOfflineUpdate, prepareOffline } from "./offline.js";
@@ -17,6 +17,7 @@ const deleteSaveLabel = document.querySelector("#delete-save-label");
 const confirmDeleteSave = document.querySelector("#confirm-delete-save");
 const deleteSaveIcon = document.querySelector("#delete-save-icon");
 const deleteSaveStatus = document.querySelector("#delete-save-status");
+const deleteSaveError = document.querySelector("#delete-save-error");
 const viewTitle = document.querySelector("#view-title");
 const regionalMap = document.querySelector("#regional-map");
 const regionPlaces = document.querySelector("#region-places");
@@ -94,7 +95,6 @@ const editHistory = document.querySelector("#edit-history");
 const confirmKey = document.querySelector("#confirm-key");
 const playKeys = document.querySelector("#play-keys");
 const quickActionKeys = document.querySelector("#quick-actions");
-const primaryActions = document.querySelector("#primary-actions");
 const heroActions = document.querySelector("#hero-actions");
 const useAction = document.querySelector("#use-action");
 const combatAction = document.querySelector("#combat-action");
@@ -251,6 +251,14 @@ const tilesMenu = makeButton("Tiles: ASCII");
 tilesMenu.removeAttribute("aria-label");
 tilesMenu.setAttribute("aria-controls", "actions-screen");
 tilesMenu.addEventListener("click", () => showPanel("tiles", openMenu));
+const themeMenu = document.createElement("button");
+themeMenu.type = "button";
+themeMenu.addEventListener("click", () => atlasTheme.toggle());
+function updateThemeButton() {
+    themeMenu.textContent = document.documentElement.dataset.theme === "light" ? "Theme: Light" : "Theme: Dark";
+}
+updateThemeButton();
+window.addEventListener("atlas-theme-change", updateThemeButton);
 const tilesStatus = document.createElement("p");
 tilesStatus.setAttribute("role", "status");
 const quantity = document.querySelector("#quantity");
@@ -289,7 +297,7 @@ const visibleListCommands = [
     ["]", "Display visible item list", null, "Item list"],
 ];
 const extraCommands = [
-    runCommand, restCommand, spellCommands.look, useCommand, repeatCommand,
+    ["p", "Start exploring"], runCommand, restCommand, spellCommands.look, useCommand, repeatCommand,
     ["r", "Read a scroll"], ["q", "Quaff a potion"], ["d", "Drop an item"],
     ["S", "View abilities"], ["M", "Full map"], ["$", "Move house"],
     ["g", "Pick up objects"], ["<", "Go up staircase or along a path"], [">", "Go down staircase or along a path"],
@@ -333,7 +341,7 @@ const mapDirections = [
 
 const scales = [0.75, 0.875, 1, 1.25, 1.5, 1.75];
 const mapScales = [...scales, 2, 2.25];
-const defaultZoom = scales.indexOf(1.5);
+const defaultZoom = scales.indexOf(1.25);
 const views = {
     terminal: {
         viewport: document.querySelector("#terminal-screen"),
@@ -412,6 +420,7 @@ let journalEntries;
 let journalPrompt = "";
 const preferencesKey = "pocketfaangband-touch";
 const preferences = { leftHanded: false, fastAim: false, tapToMove: true, tiles: 0, lastSave: "" };
+const finePointer = matchMedia("(any-pointer: fine)");
 let preferencesWriteFailed = false;
 try {
     const saved = JSON.parse(localStorage.getItem(preferencesKey) || "{}");
@@ -642,7 +651,7 @@ function renderMonsterHealth(health) {
     monsterName.textContent = name || "";
     monsterHealth.setAttribute("aria-label", name ?
         `${name}: ${segments} of 10 health segments` : "Monster health");
-    monsterHealth.style.setProperty("--monster-health-color", color ?? "");
+    monsterHealth.style.setProperty("--monster-health-color", gameTextColor(color) ?? "");
     monsterSegments.forEach((segment, index) => segment.classList.toggle("filled", index < segments));
 }
 
@@ -658,9 +667,9 @@ function renderMapStatus(state, previousSpeed) {
     levelFeeling.hidden = !feeling;
     if (feeling) {
         feelingDanger.textContent = feeling.danger;
-        feelingDanger.style.color = feeling.dangerColor;
+        feelingDanger.style.color = gameTextColor(feeling.dangerColor);
         feelingTreasure.textContent = feeling.treasure;
-        feelingTreasure.style.color = feeling.treasureColor;
+        feelingTreasure.style.color = gameTextColor(feeling.treasureColor);
         const danger = feeling.danger === "?" ? "unknown" : feeling.danger;
         const treasure = feeling.treasure === "?" ? "unknown" : feeling.treasure;
         levelFeeling.setAttribute("aria-label", `Level feeling: danger ${danger}, treasure ${treasure}`);
@@ -672,7 +681,7 @@ function renderMapStatus(state, previousSpeed) {
     mapIndicators.replaceChildren(...state.mapStatus.indicators.map(({ label, color, description }) => {
         const indicator = document.createElement("span");
         indicator.textContent = label;
-        indicator.style.color = color;
+        indicator.style.color = gameTextColor(color);
         indicator.setAttribute("role", "img");
         indicator.setAttribute("aria-label", `${label}, ${description}`);
         return indicator;
@@ -1125,6 +1134,10 @@ function updateControls() {
 }
 
 function updateMenuControls(disabled, choosing) {
+    if (mode !== "save-slots") {
+        deleteSaveStatus.textContent = "";
+        deleteSaveError.textContent = "";
+    }
     pickerToggle.disabled = disabled || !choosing;
     monsterSort.disabled = disabled;
     monsterSort.setAttribute("aria-pressed", String(!!context.sortByExp));
@@ -1377,12 +1390,6 @@ updateApp.addEventListener("click", async () => {
     }
 });
 
-function showDeleteSaveStatus(message, failed = false) {
-    deleteSaveStatus.textContent = message;
-    deleteSaveStatus.classList.toggle("error", failed);
-    deleteSaveStatus.hidden = false;
-}
-
 function openDeleteSave(button, code) {
     if (mode !== "save-slots" || request === undefined || deleteSaveDialog.open) return;
     const row = menu?.rows.find((row) => row.index === code && row.enabled);
@@ -1401,7 +1408,8 @@ deleteSaveDialog.addEventListener("submit", (event) => {
     if (!target || mode !== "save-slots" || target.request !== request ||
         !sendInput({ type: "delete-save", code: target.code })) return;
     deletingSave = true;
-    deleteSaveStatus.hidden = true;
+    deleteSaveStatus.textContent = "";
+    deleteSaveError.textContent = "";
     updateControls();
 });
 
@@ -1509,7 +1517,7 @@ function journalEntry({ text, count, color }) {
     const label = document.createElement("span");
     label.className = "journal-text";
     label.textContent = text;
-    if (color) label.style.color = color;
+    if (color) label.style.color = gameTextColor(color);
     row.append(label);
     if (count > 1) {
         const repeat = document.createElement("span");
@@ -1805,7 +1813,7 @@ function updateDetailsScreen() {
             const heading = document.createElement("p");
             heading.className = "visible-list-heading";
             heading.textContent = text;
-            if (color) heading.style.color = color;
+            if (color) heading.style.color = gameTextColor(color);
             return heading;
         }
         const row = document.createElement("div");
@@ -1837,12 +1845,12 @@ function updateDetailsScreen() {
             styleTerminalTile(glyph, tiles, tile);
         } else {
             glyph.textContent = String.fromCodePoint(symbol);
-            glyph.style.color = colors[symbolAttr % colors.length];
+            styleGlyph(glyph, colors[symbolAttr % colors.length]);
         }
         const name = document.createElement("span");
         name.className = "visible-list-name";
         name.textContent = text;
-        if (color) name.style.color = color;
+        if (color) name.style.color = gameTextColor(color);
         const distance = document.createElement("span");
         distance.className = "visible-list-location";
         distance.textContent = location;
@@ -2033,9 +2041,6 @@ function handleWorkerMessage({ data }) {
                 const stayingOnMap = activeView === views.map &&
                     (data.context.worldView || data.menu?.choice || promptModes.has(data.mode));
                 if (!stayingOnMap) centerPending = true;
-                if (mode === "save-slots") {
-                    deleteSaveStatus.hidden = true;
-                }
                 keyboardOpen = data.mode === "key";
                 openPanel = panelTrigger = undefined;
             }
@@ -2241,7 +2246,7 @@ function handleWorkerMessage({ data }) {
             updateControls();
             break;
         case "save-deleted":
-            showDeleteSaveStatus(`Deleted ${data.slot}.`);
+            deleteSaveStatus.textContent = `Deleted ${data.slot}.`;
             break;
         case "save-delete-error":
             if (data.request !== undefined) {
@@ -2250,7 +2255,7 @@ function handleWorkerMessage({ data }) {
                 updateControls();
                 if (mode === "save-slots") focusSelectedSave();
             }
-            showDeleteSaveStatus(data.message, true);
+            if (mode === "save-slots") deleteSaveError.textContent = data.message;
             break;
         case "exit":
             stop(data.code === 0 ? "FAangband has closed." :
@@ -2298,8 +2303,7 @@ function sendInput(input) {
     const movingToCell = input.type === "map-cell" && !input.openMenu && !context.mapCell?.actions &&
         input.x === context.mapCell?.x && input.y === context.mapCell?.y;
     runningFromPad = input.type === "run-direction";
-    exploring = mode === "command" && input.type === "key" && input.code === keyCode("p") &&
-        !!world?.quickActions?.canExplore;
+    exploring = mode === "command" && input.type === "key" && input.code === keyCode("p");
     discoveryArrow.hidden = true;
     if (exploring) exploreCamera.reset();
     running = runningFromPad || exploring ||
@@ -2311,7 +2315,7 @@ function sendInput(input) {
         mapDirectionAction = undefined;
         draw();
     }
-    worker.postMessage({ ...input, request });
+    worker.postMessage({ ...input, request, mouseAvailable: finePointer.matches });
     if (input.type !== "set-tiles") context.actionMessages = undefined;
     if ((running || mode === "command" || !hud.hidden || mode === "rest" ||
         (mode === "menu" && !menu?.store && !menu?.birth && !context.outcome && !menu?.title)) &&
@@ -2771,7 +2775,7 @@ mapLists.replaceChildren(...visibleListCommands.map(([key, announcement, , label
 }));
 
 for (const button of document.querySelectorAll(
-    "#play-keys [data-key], #target-actions [data-key], #terminal-keys [data-key], " +
+    "#play-keys [data-key]:not(#pack-action), #target-actions [data-key], #terminal-keys [data-key], " +
     "#birth-roll-actions [data-key], #name-fields [data-key], #text-fields [data-key], #reset-stats"
 )) setKeyHint(button);
 for (const button of directionButtons) {
@@ -2788,17 +2792,7 @@ function commandKey([key, , alternative], roguelike) {
 }
 
 function renderQuickActions({ roguelike, quickActions }) {
-    const { spell, launcher, canExplore = false } = quickActions;
-    if (primaryActions.contains(useAction) !== canExplore) {
-        if (canExplore) {
-            heroActions.after(useAction);
-            combatAction.before(repeatAction);
-        } else {
-            primaryActions.after(useAction);
-            combatAction.after(repeatAction);
-        }
-    }
-    exploreAction.hidden = !canExplore;
+    const { spell, launcher } = quickActions;
     const spellAction = spell === "look" ? undefined : spellCommands[spell];
     const combat = spell === "cast" && spellAction ? spellAction :
         launcher ? fireCommand : spellAction ?? throwCommand;
@@ -2861,7 +2855,6 @@ function renderActionsPanel() {
     } else if (openPanel === "commands") {
         commands = [...extraCommands];
         if (world?.quickActions?.canReshape) commands.push(["!", "Change shape"]);
-        if (world?.quickActions?.canExplore) commands.push(["p", "Start exploring"]);
         if (world?.quickActions?.canSteal) commands.push(stealCommand);
         commands.push(["Enter", "All FAangband commands"]);
     }
@@ -2870,8 +2863,11 @@ function renderActionsPanel() {
         const key = commandKey(entry, world?.roguelike);
         const label = entry[1];
         const button = makeKey(key, label);
-        button.prepend(keyBadge(keyNames.get(key) ?? key));
-        button.setAttribute("aria-description", `Shortcut: ${keyNames.get(key) ?? key}`);
+        if (key !== "Tab") {
+            const shortcut = keyNames.get(key) ?? key;
+            button.prepend(keyBadge(shortcut));
+            button.setAttribute("aria-description", `Shortcut: ${shortcut}`);
+        }
         return button;
     });
     if (openPanel === "menu") {
@@ -2880,7 +2876,7 @@ function renderActionsPanel() {
         commands.onclick = () => showPanel("commands", openMenu);
         const settings = makeButton("Touch settings");
         settings.onclick = () => showPanel("touch-settings", openMenu);
-        rows.unshift(commands, tilesMenu, settings);
+        rows.unshift(commands, tilesMenu, themeMenu, settings);
     }
     if (openPanel === "commands") {
         const grouped = [];
@@ -3116,7 +3112,7 @@ function renderMenu(state, description = state?.description ?? "") {
     const previousScroll = activeList.scrollArea.scrollTop;
     const showGold = state.store && !state.store.home;
     menuSections.hidden = (state.sections?.length ?? 0) <= 1;
-    const scrollItems = showGold || !menuSections.hidden;
+    const scrollItems = saveSlots || showGold || !menuSections.hidden;
     menuScreen.classList.toggle("scroll-menu-items", scrollItems);
     const scrollArea = scrollItems ? menuItems : menuScreen;
     activeList.scrollArea = scrollArea;
@@ -3180,14 +3176,14 @@ function renderMenu(state, description = state?.description ?? "") {
         }
         const description = document.createElement("span");
         description.textContent = label;
-        if (row.color) description.style.color = row.color;
+        if (row.color) description.style.color = gameTextColor(row.color);
         if (row.spellInfo !== undefined) button.classList.add("spell-choice");
         if (row.detail && !state.birth) {
             const detail = document.createElement("small");
             detail.textContent = row.detail;
             if (row.spellInfo) {
                 const info = document.createElement("span");
-                info.style.color = row.color;
+                info.style.color = gameTextColor(row.color);
                 info.textContent = row.spellInfo;
                 detail.append(" ", info);
             }
@@ -3221,7 +3217,7 @@ function renderMenu(state, description = state?.description ?? "") {
             if (tile) styleTerminalTile(glyph, tiles, tile);
             else {
                 glyph.textContent = String.fromCodePoint(symbol);
-                glyph.style.color = color;
+                styleGlyph(glyph, color);
             }
             button.firstElementChild.replaceWith(glyph);
         }
@@ -3473,7 +3469,7 @@ function renderMessageRecall() {
         const matches = pattern ? [...line.matchAll(pattern)] : [];
         if (pattern && !matches.length) continue;
         const item = document.createElement("li");
-        if (entry.color) item.style.color = entry.color;
+        if (entry.color) item.style.color = gameTextColor(entry.color);
         let end = 0;
         for (const match of matches) {
             const highlighted = document.createElement("mark");

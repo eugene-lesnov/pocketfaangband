@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160">
+    <style>
+        #light { display: none; }
+        @media (prefers-color-scheme: light) {
+            #light { display: inline; }
+        }
+        #light:target { display: inline; }
+        #dark:target + #light { display: none; }
+    </style>
+    <defs>
+        <g id="mountain" font-family="monospace" font-weight="bold" text-anchor="middle">
+            <g font-size="56" fill="currentColor">
+                <text x="80" y="72">/\</text>
+                <text x="80" y="114" xml:space="preserve">/  \</text>
+            </g>
+            <text x="80" y="118" font-size="48">@</text>
+        </g>
+    </defs>
+    <g id="dark">
+        <rect width="160" height="160" fill="#101c29"/>
+        <use href="#mountain" color="#f0ece0" fill="#edc07e"/>
+    </g>
+    <g id="light">
+        <rect width="160" height="160" fill="#e4dfd0"/>
+        <use href="#mountain" color="#2f302a" fill="#805219"/>
+    </g>
+</svg>
