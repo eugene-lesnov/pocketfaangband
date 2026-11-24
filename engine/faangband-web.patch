@@ -7605,7 +7605,7 @@ index c37ae2d..6a6f0bb 100644
  	screen_save_depth--;
  }
 diff --git a/src/ui-player-properties.c b/src/ui-player-properties.c
-index 96e1551..a241a02 100644
+index 96e1551..ae31100 100644
 --- a/src/ui-player-properties.c
 +++ b/src/ui-player-properties.c
 @@ -79,6 +79,7 @@ static void view_ability_display(struct menu *menu, int oid, bool cursor,
@@ -7716,13 +7716,15 @@ index 96e1551..a241a02 100644
  	/* Load screen */
  	screen_load();
  
-@@ -336,6 +391,17 @@ bool textui_gain_spec_menu(int *pick)
+@@ -336,6 +391,19 @@ bool textui_gain_spec_menu(int *pick)
   */
  void textui_interact_with_specialties(void)
  {
 +#ifdef __EMSCRIPTEN__
 +	struct menu *menu = menu_dynamic_new();
 +	menu->title = "Abilities";
++	menu->selections = "lv";
++	menu->flags |= MN_CASELESS_TAGS;
 +	menu_dynamic_add(menu, "Learn specialty", 'l');
 +	menu_dynamic_add(menu, "View abilities", 'v');
 +	menu_layout(menu, &SCREEN_REGION);
@@ -7734,7 +7736,7 @@ index 96e1551..a241a02 100644
  	ui_event answer;
  
  	/* Interact and choose. */
-@@ -357,4 +423,5 @@ void textui_interact_with_specialties(void)
+@@ -357,4 +425,5 @@ void textui_interact_with_specialties(void)
  		if (answer.key.code == ESCAPE)
  			break;
  	}

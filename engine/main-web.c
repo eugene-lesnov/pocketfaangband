@@ -1669,11 +1669,13 @@ EM_JS(void, set_map_route_available, (bool available), {
     Module['inputContext'].mapCell.canRoute = !!available;
 });
 
-EM_JS(void, add_map_action, (int x, int y, int direction, int code, const char *label, int key), {
+EM_JS(void, add_map_action, (int x, int y, int direction, int code, const char *label, int key,
+        const char *key_sequence), {
     const actions = Module['inputContext'].mapCell.actions;
     let action = actions.find((entry) => entry.code === code);
     if (!action) {
         action = { code, label: UTF8ToString(label), key };
+        if (key_sequence) action.keySequence = UTF8ToString(key_sequence);
         actions.push(action);
     }
     if (direction) {
@@ -1692,7 +1694,7 @@ static void describe_map_actions(int x, int y, int direction, unsigned enabled)
         const char *label = map_action_labels[code];
         if ((code == MAP_GO_UP || code == MAP_GO_DOWN) && square_ispath(player->cave, web_map_grid(x, y)))
             label = "Follow path";
-        add_map_action(x, y, direction, code, label, key);
+        add_map_action(x, y, direction, code, label, key, code == MAP_LEARN_SPECIALTY ? "S → l" : NULL);
     }
 }
 

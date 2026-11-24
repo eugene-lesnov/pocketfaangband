@@ -2651,11 +2651,11 @@ function renderMapActions() {
     const { actions, here } = context.mapCell;
     const buttons = [];
     const footer = [closeMapCellActions];
-    for (const { code, label, key, targets } of [...actions].sort((a, b) => a.code - b.code)) {
+    for (const { code, label, key, keySequence, targets } of [...actions].sort((a, b) => a.code - b.code)) {
         const direction = targets?.length === 1 ? mapDirections[targets[0].direction] : undefined;
         const button = makeInput("map-action", code, direction?.arrow ? `${label} ${direction.arrow}` : label);
         if (direction) button.setAttribute("aria-label", `${label}, ${direction.name}`);
-        if (key) setKeyHint(button, keyFromCode(key));
+        if (key || keySequence) setKeyHint(button, keySequence || keyFromCode(key));
         if (here && key === keyCode(restCommand[0])) footer.push(button);
         else buttons.push(button);
     }
