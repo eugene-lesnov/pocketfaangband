@@ -1474,7 +1474,7 @@ void web_move_aim(int direction, struct loc *location)
 enum web_map_action {
     MAP_EAT, MAP_REFILL, MAP_EQUIP_LIGHT, MAP_PICKUP, MAP_GO_UP, MAP_GO_DOWN,
     MAP_OPEN, MAP_CLOSE, MAP_DISARM, MAP_TUNNEL, MAP_OPEN_CHEST, MAP_DISARM_CHEST,
-    MAP_STUDY, MAP_REST, MAP_JUMP, MAP_WALK, MAP_ATTACK, MAP_STEAL, MAP_FIRE, MAP_CAST,
+    MAP_STUDY, MAP_LEARN_SPECIALTY, MAP_REST, MAP_JUMP, MAP_WALK, MAP_ATTACK, MAP_STEAL, MAP_FIRE, MAP_CAST,
     MAP_THROW, MAP_DETAILS, MAP_INSPECT, MAP_FLOOR, MAP_SET_TRAP, MAP_IMPROVE_TRAP, MAP_ACTION_COUNT
 };
 
@@ -1484,7 +1484,8 @@ static const char *const map_action_labels[MAP_ACTION_COUNT] = {
     [MAP_GO_DOWN] = "Go down staircase",
     [MAP_OPEN] = "Open", [MAP_CLOSE] = "Close", [MAP_DISARM] = "Disarm", [MAP_TUNNEL] = "Tunnel",
     [MAP_OPEN_CHEST] = "Open Chest", [MAP_DISARM_CHEST] = "Disarm Chest", [MAP_STUDY] = "Study",
-    [MAP_REST] = "Rest", [MAP_JUMP] = "Walk into a trap", [MAP_WALK] = "Walk",
+    [MAP_LEARN_SPECIALTY] = "Learn specialty", [MAP_REST] = "Rest",
+    [MAP_JUMP] = "Walk into a trap", [MAP_WALK] = "Walk",
     [MAP_ATTACK] = "Attack", [MAP_STEAL] = "Steal",
     [MAP_FIRE] = "Fire", [MAP_CAST] = "Cast", [MAP_THROW] = "Throw",
     [MAP_DETAILS] = "Details", [MAP_INSPECT] = "Inspect", [MAP_FLOOR] = "Floor",
@@ -1549,6 +1550,7 @@ static unsigned player_map_actions(struct loc grid, int object_count)
         actions |= 1U << MAP_TUNNEL;
     if (player_can_study(player, false) && has_action_item(obj_can_study, pack_and_floor))
         actions |= 1U << MAP_STUDY;
+    if (player->upkeep->new_specialties > 0) actions |= 1U << MAP_LEARN_SPECIALTY;
     return actions;
 }
 
@@ -1796,6 +1798,11 @@ bool web_act_on_map_cell(int x, int y, int action)
     int count = scan_distant_floor(objects, N_ELEMENTS(objects), player, grid);
     struct map_action_cell nearby[DIR_NE + 1] = { 0 };
     if (!(map_actions(grid, mon, objects, count, false, nearby) & (1U << action))) return false;
+    if (action == MAP_LEARN_SPECIALTY) {
+        if (!key_confirm_command('S')) return false;
+        gain_specialty();
+        return true;
+    }
     if (action == MAP_REST) {
         if (!key_confirm_command('R')) return false;
         textui_cmd_rest();
