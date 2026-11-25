@@ -1273,15 +1273,6 @@ index e99cde1..f7caf7c 100644
 -OP(birth_thrall,          "Start on steps of Angband (wilderness only)",
 +OP(birth_thrall,          "Start as a thrall on the steps of Angband (wilderness only)",
  BIRTH, false)
-diff --git a/src/list-square-flags.h b/src/list-square-flags.h
-index 5cada7f..727f26d 100644
---- a/src/list-square-flags.h
-+++ b/src/list-square-flags.h
-@@ -32,3 +32,4 @@ SQUARE(PROJECT,		"marked for projection processing")
- SQUARE(DTRAP,		"trap detected square")
- SQUARE(NO_STAIRS,	"square is not suitable for placing stairs")
- SQUARE(CLOSE_PLAYER,	"square is seen and in player's light radius or UNLIGHT detection radius")
-+SQUARE(EXPLORE_LOCKED,	"reserved for older exploration saves")
 diff --git a/src/load.c b/src/load.c
 index f515a9a..1430403 100644
 --- a/src/load.c
