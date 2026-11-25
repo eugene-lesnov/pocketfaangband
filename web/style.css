@@ -493,36 +493,34 @@ dt { color: var(--muted); }
     padding: 1rem;
     text-align: center;
 }
-.splash-map {
+.splash-crown {
     position: relative;
     margin: auto 0 0;
     padding: 0.875em 0.75em;
     background: var(--page);
+    color: var(--wall);
     font: 500 min(1.125rem, 5.25cqi)/1.08 var(--mono);
     font-variant-ligatures: none;
     letter-spacing: 0.13em;
-    text-align: left;
+    text-align: center;
 }
-.splash-map::before, .splash-map::after {
+.splash-crown::before, .splash-crown::after {
     position: absolute;
     width: 1em;
     height: 1em;
     border: solid var(--border);
     content: "";
 }
-.splash-map::before { inset: 0 auto auto 0; border-width: 1px 0 0 1px; }
-.splash-map::after { inset: auto 0 0 auto; border-width: 0 1px 1px 0; }
-.splash-map-art {
-    display: block;
-    background: radial-gradient(ellipse, var(--wall), var(--floor) 74%);
-    background-clip: text;
-    color: transparent;
+.splash-crown::before { inset: 0 auto auto 0; border-width: 1px 0 0 1px; }
+.splash-crown::after { inset: auto 0 0 auto; border-width: 0 1px 1px 0; }
+.splash-crown b {
+    color: var(--accent);
+    font-weight: 700;
+    text-shadow: 0 0 0.3em currentColor;
 }
-.splash-map-player, .white-glyph { color: var(--white-symbol); background-color: var(--white-cell); }
+.white-glyph { color: var(--white-symbol); background-color: var(--white-cell); }
 .floor-glyph { color: var(--floor); }
 .wall-glyph { color: var(--wall); }
-.splash-map-path { color: var(--muted); }
-.splash-map-stairs { color: var(--accent); }
 #splash-screen h3 { margin: 0; color: var(--accent); font-size: 1.75rem; }
 .splash-subtitle { margin-block-start: 0.375rem; color: var(--muted); font-size: 0.875rem; }
 #update-app {

@@ -5,7 +5,7 @@ PocketFAangband brings First Age Angband, a single-player roguelike set in Tolki
 The game runs in your browser. Play in portrait with touch controls and choose between classic ASCII and graphical tiles. After the first download, you can play offline.
 
 <p>
-  <a href="screenshots/hello.png"><img src="screenshots/hello.png" width="280" alt="PocketFAangband welcome screen in the dark Atlas theme"></a>
+  <a href="screenshots/hello.png"><img src="screenshots/hello.png" width="280" alt="Welcome screen in the dark Atlas theme. Morgoth’s crown and two glowing Silmarils rise above the three peaks of Thangorodrim, with the gates of Angband below."></a>
   <a href="screenshots/ascii.png"><img src="screenshots/ascii.png" width="280" alt="Explore finds copper in Eriador South. The same ASCII map is shown in the light and dark Atlas themes."></a>
 </p>
 
