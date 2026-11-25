@@ -1,8 +1,8 @@
 diff --git a/docs/command.rst b/docs/command.rst
-index 8e4f3b3..5786f11 100644
+index 8e4f3b3..931764c 100644
 --- a/docs/command.rst
 +++ b/docs/command.rst
-@@ -141,6 +141,30 @@ Go down staircase or along a path (``>``)
+@@ -141,6 +141,31 @@ Go down staircase or along a path (``>``)
    will take you on a path to a more dangerous level. See "Go Up Staircase" for
    more info. This command takes some energy.
  
@@ -12,12 +12,13 @@ index 8e4f3b3..5786f11 100644
 +  You can cross glyphs of warding, pick locks, and dig through impassable
 +  rubble when you have a chance to clear it. After ten failed attempts at
 +  one grid, exploration skips that obstacle until you start exploring again.
-+  Routes avoid damaging terrain, falls, webs, and known traps that can affect you.
++  Routes avoid damaging terrain, falls, and webs. If no safe route remains,
++  you try to disarm known traps that block further exploration.
 +
 +  Exploration heads for known treasure and items you would automatically
 +  pick up when they are within ten extra movement turns of the nearest
 +  unexplored area. It collects more distant items before finishing the
-+  level if there is a safe route. The usual pickup rules apply, including
++  level if they are reachable. The usual pickup rules apply, including
 +  limits such as ``=g5``. Ignored items are skipped.
 +
 +  Exploration stops with "Something is here." when you notice a monster,
@@ -296,7 +297,7 @@ index d09e0ed..913d42d 100644
  	int light;
  	int16_t mon;
 diff --git a/src/cmd-cave.c b/src/cmd-cave.c
-index 626df6b..388b1c0 100644
+index 626df6b..c0a1ed3 100644
 --- a/src/cmd-cave.c
 +++ b/src/cmd-cave.c
 @@ -49,6 +49,9 @@
@@ -367,7 +368,7 @@ index 626df6b..388b1c0 100644
  	do_cmd_alter_aux(dir);
  }
  
-@@ -1300,14 +1317,36 @@ void move_player(int dir, bool disarm)
+@@ -1300,14 +1317,41 @@ void move_player(int dir, bool disarm)
  	/* Many things can happen on movement */
  	if (m_idx > 0) {
  		/* Attack monsters */
@@ -389,6 +390,11 @@ index 626df6b..388b1c0 100644
  			py_attack(player, grid);
  		}
 +	} else if (player->upkeep->exploring && square_isknown(cave, grid) &&
++			trap && !trapsafe && square_isdisarmabletrap(player->cave, grid)) {
++		player->upkeep->energy_use = z_info->move_energy;
++		if (do_cmd_disarm_aux(grid))
++			++player->cave->squares[grid.y][grid.x].explore_failures;
++	} else if (player->upkeep->exploring && square_isknown(cave, grid) &&
 +			(door || (square_isrubble(player->cave, grid) &&
 +			square_isrubble(cave, grid) && !square_ispassable(cave, grid)))) {
 +		struct square *known = &player->cave->squares[grid.y][grid.x];
@@ -404,7 +410,7 @@ index 626df6b..388b1c0 100644
  	} else if (((trap && disarm) || door) && square_isknown(cave, grid)) {
  		/* Auto-repeat if not already repeating */
  		if (cmd_get_nrepeats() == 0)
-@@ -1379,6 +1418,8 @@ void move_player(int dir, bool disarm)
+@@ -1379,6 +1423,8 @@ void move_player(int dir, bool disarm)
  		if (player->upkeep->running
  				&& !player->upkeep->running_firststep
  				&& old_dtrap && !new_dtrap) {
@@ -413,7 +419,7 @@ index 626df6b..388b1c0 100644
  			disturb(player);
  			/* No move made so no energy spent. */
  			player->upkeep->energy_use = 0;
-@@ -1724,54 +1765,132 @@ void do_cmd_navigate_up(struct command *cmd)
+@@ -1724,54 +1770,132 @@ void do_cmd_navigate_up(struct command *cmd)
  	msg("No known path to upstairs.");
  }
  
@@ -572,7 +578,7 @@ index 626df6b..388b1c0 100644
  }
  
  
-@@ -1868,8 +1987,6 @@ void do_cmd_rest(struct command *cmd)
+@@ -1868,8 +1992,6 @@ void do_cmd_rest(struct command *cmd)
  
  	/* Do some upkeep on the first turn of rest */
  	if (!player_is_resting(player)) {
@@ -581,7 +587,7 @@ index 626df6b..388b1c0 100644
  		/* If a number of turns was entered, remember it */
  		if (n > 1)
  			player_set_resting_repeat_count(player, n);
-@@ -1878,17 +1995,9 @@ void do_cmd_rest(struct command *cmd)
+@@ -1878,17 +2000,9 @@ void do_cmd_rest(struct command *cmd)
  			n = player_get_resting_repeat_count(player);
  	}
  
@@ -600,7 +606,7 @@ index 626df6b..388b1c0 100644
  	/* Prepare to continue, or cancel and clean up */
  	if (player_resting_count(player) > 0) {
  		cmdq_push(CMD_REST);
-@@ -2033,6 +2142,7 @@ void do_cmd_mon_command(struct command *cmd)
+@@ -2033,6 +2147,7 @@ void do_cmd_mon_command(struct command *cmd)
  	struct monster_lore *lore = NULL;
  	char m_name[80];
  
@@ -608,7 +614,7 @@ index 626df6b..388b1c0 100644
  	assert(mon);
  	lore = get_lore(mon->race);
  
-@@ -2056,7 +2166,7 @@ void do_cmd_mon_command(struct command *cmd)
+@@ -2056,7 +2171,7 @@ void do_cmd_mon_command(struct command *cmd)
  
  			/* Choose a target monster */
  			target_set_monster(NULL);
@@ -1663,7 +1669,7 @@ index 9a92a4d..b856ea9 100644
  			if (state->stat_ind[STAT_STR] < cutoff) {
  				state->shield_on_back = true;
 diff --git a/src/player-path.c b/src/player-path.c
-index c356caf..08b9a6f 100644
+index c356caf..d00b9da 100644
 --- a/src/player-path.c
 +++ b/src/player-path.c
 @@ -74,6 +74,7 @@ struct pfdistances_patched {
@@ -1674,7 +1680,7 @@ index c356caf..08b9a6f 100644
  
  /**
   * Determine whether a grid is OK for the pathfinder to check
-@@ -120,6 +121,70 @@ static bool is_valid_pf(struct player *p, struct loc grid, bool only_known,
+@@ -120,6 +121,74 @@ static bool is_valid_pf(struct player *p, struct loc grid, bool only_known,
  	return false;
  }
  
@@ -1710,14 +1716,18 @@ index c356caf..08b9a6f 100644
 +	return false;
 +}
 +
-+static bool explore_can_enter(struct player *p, struct loc grid)
++static bool explore_can_enter(struct player *p, struct loc grid, bool forbid_traps)
 +{
 +	struct chunk *c = p->cave;
++	const struct trap *trap;
 +
-+	if (!is_valid_pf(p, grid, true, false) || square_isshop(c, grid) ||
-+			explore_blocking_trap(p, grid))
++	if (!is_valid_pf(p, grid, true, false) || square_isshop(c, grid))
 +		return false;
-+	return square_ispassable(c, grid) ||
++	trap = explore_blocking_trap(p, grid);
++	if (trap && (forbid_traps || trf_has(trap->flags, TRF_WEB) ||
++			!square_isdisarmabletrap(c, grid)))
++		return false;
++	return (!trap && square_ispassable(c, grid)) ||
 +		square(c, grid)->explore_failures < EXPLORE_FAILURE_LIMIT;
 +}
 +
@@ -1745,7 +1755,7 @@ index c356caf..08b9a6f 100644
  /**
   * Help compute_unlocked_penalty(), compute_locked_penalty(), and
   * compute_rubble_penalty():  convert a penalty in standard turns to one in
-@@ -320,33 +385,16 @@ static int compute_passable_rubble_penalty(struct player *p)
+@@ -320,33 +389,16 @@ static int compute_passable_rubble_penalty(struct player *p)
  	return convert_turn_penalty(PF_SCL, p);
  }
  
@@ -1783,7 +1793,7 @@ index c356caf..08b9a6f 100644
  
  	if (!p->cave || !square_in_bounds_fully(p->cave, start)) {
  		return NULL;
-@@ -378,8 +426,9 @@ struct pfdistances *prepare_pfdistances(struct player *p, struct loc start,
+@@ -378,8 +430,9 @@ struct pfdistances *prepare_pfdistances(struct player *p, struct loc start,
  	for (grid.y = 1; grid.y < result->height - 1; ++grid.y) {
  		result->rows[grid.y][0] = -1;
  		for (grid.x = 1; grid.x < result->width - 1; ++grid.x) {
@@ -1795,7 +1805,7 @@ index c356caf..08b9a6f 100644
  		}
  		result->rows[grid.y][result->width - 1] = -1;
  	}
-@@ -417,6 +466,20 @@ struct pfdistances *prepare_pfdistances(struct player *p, struct loc start,
+@@ -417,6 +470,20 @@ struct pfdistances *prepare_pfdistances(struct player *p, struct loc start,
  
  		i_to_grid(q_pop_int(pending), result->width, &grid);
  		cur_distance = result->rows[grid.y][grid.x];
@@ -1816,19 +1826,19 @@ index c356caf..08b9a6f 100644
  		/*
  		 * Move one grid, i.e. PF_SCL, to get to the next grid.  If
  		 * that exceeds the maximum distance possible, have no
-@@ -439,6 +502,11 @@ struct pfdistances *prepare_pfdistances(struct player *p, struct loc start,
+@@ -439,6 +506,11 @@ struct pfdistances *prepare_pfdistances(struct player *p, struct loc start,
  			if (result->rows[next.y][next.x] <= cur_distance) {
  				continue;
  			}
 +			if (explore_dest && result->rows[next.y][next.x] == INT_MAX &&
-+					!explore_can_enter(p, next)) {
++					!explore_can_enter(p, next, forbid_traps)) {
 +				result->rows[next.y][next.x] = -1;
 +				continue;
 +			}
  			/*
  			 * Add next as a feasible point; penalize some terrain
  			 * if it is known and hard to traverse.
-@@ -512,6 +580,31 @@ struct pfdistances *prepare_pfdistances(struct player *p, struct loc start,
+@@ -512,6 +584,31 @@ struct pfdistances *prepare_pfdistances(struct player *p, struct loc start,
  	return result;
  }
  
@@ -1860,7 +1870,7 @@ index c356caf..08b9a6f 100644
  /**
   * Return the expected number of movement turns to reach the given grid.
   *
-@@ -1088,6 +1181,150 @@ int path_nearest_unknown(struct player *p, struct loc start,
+@@ -1088,6 +1185,155 @@ int path_nearest_unknown(struct player *p, struct loc start,
  	}
  }
  
@@ -1967,12 +1977,12 @@ index c356caf..08b9a6f 100644
 +		unknown_neighbors(c, p->grid);
 +
 +	if (upkeep->steps && upkeep->step_count > 0 &&
-+			explore_can_enter(p, upkeep->path_dest) &&
++			explore_can_enter(p, upkeep->path_dest, false) &&
 +			(explore_frontier(c, upkeep->path_dest) ||
 +			 explore_pickup_at(p, upkeep->path_dest))) {
 +		int dir = upkeep->steps[upkeep->step_count - 1];
 +
-+		if (explore_can_enter(p, loc_sum(p->grid, ddgrid[dir])))
++		if (explore_can_enter(p, loc_sum(p->grid, ddgrid[dir]), true))
 +			return dir;
 +	}
 +	mem_free(upkeep->steps);
@@ -1984,7 +1994,7 @@ index c356caf..08b9a6f 100644
 +		struct loc grid = loc_sum(p->grid, ddgrid_ddd[i]);
 +
 +		if (square_in_bounds_fully(c, grid) && square_ispassable(c, grid)
-+				&& explore_can_enter(p, grid) && explore_frontier(c, grid)) {
++				&& explore_can_enter(p, grid, true) && explore_frontier(c, grid)) {
 +			if (nearest_pickup <= 1 + EXPLORE_PICKUP_BONUS)
 +				break;
 +			return ddd[i];
@@ -1992,8 +2002,13 @@ index c356caf..08b9a6f 100644
 +	}
 +
 +	upkeep->path_dest = loc(-1, -1);
-+	distances = prepare_distances(p, p->grid, true, false, &upkeep->path_dest,
++	distances = prepare_distances(p, p->grid, true, true, &upkeep->path_dest,
 +			nearest_pickup != INT_MAX);
++	if (distances && upkeep->path_dest.x < 0) {
++		release_pfdistances(distances);
++		distances = prepare_distances(p, p->grid, true, false, &upkeep->path_dest,
++				nearest_pickup != INT_MAX);
++	}
 +	upkeep->step_count = pfdistances_to_path(distances, upkeep->path_dest,
 +			&upkeep->steps);
 +	if (upkeep->step_count <= 0) {

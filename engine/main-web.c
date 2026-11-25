@@ -52,7 +52,7 @@
 #include "z-type.h"
 #include <emscripten.h>
 
-enum { RUN_STEP_DELAY_MS = 80, EXPLORE_STEP_DELAY_MS = 60 };
+enum { RUN_STEP_DELAY_MS = 80, EXPLORE_STEP_DELAY_MS = 55 };
 
 static enum web_input_mode input_mode;
 static const char *input_prompt;
